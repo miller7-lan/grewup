@@ -1,0 +1,15 @@
+# Python 缓存
+__pycache__/
+*.py[cod]
+*$py.class
+
+# 虚拟环境
+venv/
+.venv/
+env/
+
+# macOS 系统文件
+.DS_Store
+
+# Streamlit 运行配置
+.streamlit/
