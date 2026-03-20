@@ -1,6 +1,6 @@
 # 🛡️ 团支部智能核查系统 (Dazzle Secretary Pro)
 
-> **版本**：v2.0.1 Stable  
+> **版本**：v2.0Stable  
 > **开发者**：Dazzle (Software Engineering, 2025 Cohort)  
 > **核心驱动**：Python 3.13 + Streamlit + Ollama (Optional)
 
@@ -33,7 +33,7 @@
 
 ---
 
-## 🍎 Mac 用户食用指南
+## 🍎 Mac 用户
 
 由于 macOS 的安全机制，Mac 版请按以下步骤操作：
 
@@ -48,3 +48,30 @@
 如果提示“文件已损坏”，请在终端 (Terminal) 输入以下命令并回车：
 ```bash
 xattr -cr /Applications/DazzleSecretaryMac
+
+---
+#更新日志
+## 🚀 Dazzle Secretary Pro v1.0 全新架构与 AI 智能核查升级  2026.2.28
+
+### ✨ 核心新特性 (New Features)
+
+* **🖥 全新现代化 Web 交互 (Streamlit Pro)**
+    * 采用 Streamlit Pro 打造了全新的侧边栏导航与实时数据看板。
+    * 实时显示班级基数（团员/群众/总计），以及核查任务的“应到/实到/待冲锋”进度和完成率。
+* **🧠 AI 智能核查引擎 (Ollama + Qwen 3.0)**
+    * 引入阿里通义千问本地化部署，支持“极速匹配模式”。
+    * 支持直接粘贴乱序文本 AI 自动进行秒级核对，零延迟输出未完成与已完成名单。
+* **🗂 智能底册管理系统**
+    * 录入/更新班级底册面板，支持一行一个名字的快速录入。
+    
+* **⚡️ 底层性能与硬件优化**
+    * 核心语言 **Python 3.13**。
+
+
+
+## 🚀 Dazzle Secretary Pro v2.0 全新架构与 AI 智能核查升级  2026.3.20
+
+### ✨ 核心新特性 (New Features)
+* ** 功能补全 **
+    * 在原有的基础上增加了党员名单的录用和匹配
+    * 保持了基本的逻辑和设计方案
