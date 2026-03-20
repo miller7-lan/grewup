@@ -48,9 +48,11 @@
 如果提示“文件已损坏”，请在终端 (Terminal) 输入以下命令并回车：
 ```bash
 xattr -cr /Applications/DazzleSecretaryMac
-
+```
 ---
-#更新日志
+
+
+# 更新日志
 ## 🚀 Dazzle Secretary Pro v1.0 全新架构与 AI 智能核查升级  2026.2.28
 
 ### ✨ 核心新特性 (New Features)
