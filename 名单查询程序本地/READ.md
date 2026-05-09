@@ -1,6 +1,6 @@
 # 🛡️ 团支部智能核查系统 (Dazzle Secretary Pro)
 
-> **版本**：v2.0Stable  
+> **版本**：v3.0 Agent Architecture  
 > **开发者**：Dazzle (Software Engineering, 2025 Cohort)  
 > **核心驱动**：Python 3.13 + Streamlit + Ollama (Optional)
 
@@ -13,8 +13,29 @@
 ### ✨ 核心亮点
 * **⚡️ 极速模式 (Turbo Mode)**：默认开启。基于 Dazzle 自研的高速匹配算法，**无需安装任何 AI 环境**，0 延迟，0 报错。
 * **💾 自动存档 (Auto-Save)**：内置 JSON 持久化引擎，自动保存班级底册，软件关闭数据不丢失。
+* **🧩 Agent 架构 (Agent Architecture)**：将 UI、底册、核查计算、AI 解析拆分为独立模块，后续可继续扩展历史记录、Excel 导入、云端 fallback。
 * **🛡️ 双平台支持**：提供 Windows 独立版 (.exe) 与 Mac 适配方案。
 * **🧠 AI 深度解析 (可选)**：针对极度混乱的文本，支持调用本地 Ollama 大模型进行模糊推理。
+
+---
+
+## 🧱 v3.0 项目结构
+
+```text
+secretary.py       # Streamlit 主界面，只负责交互与展示
+agent.py           # 考勤秘书 Agent，调度极速匹配或 Ollama AI 解析
+attendance.py      # 核查计算、完成率、未完成名单和提醒话术
+roster.py          # 底册读写、姓名清洗、身份冲突处理
+class_roster.json  # 班级底册数据
+requirements.txt   # Python 依赖
+```
+
+### v3.0 升级重点
+
+* **三类身份底册**：支持党员、团员、群众，自动按“党员 > 团员 > 群众”处理跨组冲突。
+* **可验证 Agent 输出**：AI 只负责提取候选姓名，最终核查仍由 `attendance.py` 用底册集合计算，避免模型幻觉直接影响结果。
+* **未知姓名提示**：AI 识别到但不在当前核查范围内的姓名会单独展示，便于发现 OCR 错字或底册遗漏。
+* **核心逻辑可测试**：名单清洗、极速匹配、核查计算已从 Streamlit 页面拆出，后续可以直接加单元测试。
 
 ---
 
@@ -77,3 +98,19 @@ xattr -cr /Applications/DazzleSecretaryMac
 * ** 功能补全 **
     * 在原有的基础上增加了党员名单的录用和匹配
     * 保持了基本的逻辑和设计方案
+
+
+## 🚀 Dazzle Secretary Pro v3.0 Agent 架构升级  2026.5.9
+
+### ✨ 核心新特性 (New Features)
+* **模块化升级**
+    * `secretary.py` 专注 UI 展示。
+    * `agent.py` 专注本地 Ollama Agent 调度。
+    * `attendance.py` 专注核查计算。
+    * `roster.py` 专注底册读写与清洗。
+* **核查可信度提升**
+    * 极速模式保持本地精确匹配。
+    * AI 模式只输出候选姓名，最终由程序和底册做确定性比对。
+    * 新增“不在当前核查范围内”的识别结果提示。
+* **后续扩展准备**
+    * 为 Excel 导入导出、历史记录、多班级底册、云端模型 fallback 留出清晰边界。
