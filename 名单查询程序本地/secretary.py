@@ -16,21 +16,26 @@ st.set_page_config(
 st.markdown("""
     <style>
     .block-container { padding-top: 1.6rem; max-width: 1180px; }
-    .dazzle-strip {
-        height: 6px;
-        border-radius: 999px;
-        background: linear-gradient(90deg, #ff4b4b 0%, #ffb347 36%, #2dd4bf 68%, #4b79ff 100%);
-        margin-bottom: 14px;
-    }
     .app-hero {
+        position: relative;
         border: 1px solid #ffd6d6;
         border-radius: 8px;
-        padding: 20px 24px;
+        padding: 20px 24px 24px;
         background:
             linear-gradient(135deg, rgba(255, 245, 245, 0.96), rgba(239, 246, 255, 0.98)),
             #ffffff;
         box-shadow: 0 10px 30px rgba(255, 75, 75, 0.08);
         margin-bottom: 18px;
+        overflow: hidden;
+    }
+    .app-hero:after {
+        content: "";
+        position: absolute;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        height: 5px;
+        background: linear-gradient(90deg, #ff4b4b 0%, #ffb347 36%, #2dd4bf 68%, #4b79ff 100%);
     }
     .hero-topline {
         display: flex;
@@ -47,11 +52,6 @@ st.markdown("""
         color: #202124;
         font-weight: 780;
         letter-spacing: 0;
-    }
-    .hero-subtitle {
-        margin-top: 8px;
-        color: #5f6368;
-        font-size: 15px;
     }
     .status-grid {
         display: grid;
@@ -180,8 +180,6 @@ with st.sidebar:
 
 
 # ================= 5. 主界面布局 =================
-st.markdown('<div class="dazzle-strip"></div>', unsafe_allow_html=True)
-
 st.markdown(f"""
     <section class="app-hero">
         <div class="hero-topline">
@@ -189,7 +187,6 @@ st.markdown(f"""
             <span>🚀 Designed By Dazzle With MacBook</span>
         </div>
         <h1 class="hero-title">🛡️ 团支部智能核查系统</h1>
-        <div class="hero-subtitle">彩色看板 + Agent 核查 + 截图 OCR。粘贴文字或上传截图，一次性生成未完成名单和群通知话术。</div>
     </section>
 """, unsafe_allow_html=True)
 

@@ -1,4 +1,5 @@
 import platform
+from pathlib import Path
 import shutil
 
 from PIL import Image
@@ -68,12 +69,33 @@ def _has_tesseract():
         __import__("pytesseract")
     except Exception:
         return False
-    return shutil.which("tesseract") is not None
+    return _tesseract_cmd() is not None
+
+
+def _tesseract_cmd():
+    found = shutil.which("tesseract")
+    if found:
+        return found
+
+    candidates = [
+        "/opt/homebrew/bin/tesseract",
+        "/usr/local/bin/tesseract",
+        r"C:\Program Files\Tesseract-OCR\tesseract.exe",
+        r"C:\Program Files (x86)\Tesseract-OCR\tesseract.exe",
+    ]
+    for candidate in candidates:
+        if Path(candidate).exists():
+            return candidate
+    return None
 
 
 def _extract_with_tesseract(image_bytes):
     from io import BytesIO
     import pytesseract
+
+    tesseract_cmd = _tesseract_cmd()
+    if tesseract_cmd:
+        pytesseract.pytesseract.tesseract_cmd = tesseract_cmd
 
     image = Image.open(BytesIO(image_bytes))
     if image.mode not in ("RGB", "L"):
