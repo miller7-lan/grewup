@@ -1,6 +1,6 @@
 # 🛡️ 团支部智能核查系统 (Dazzle Secretary Pro)
 
-> **版本**：v3.0 Agent Architecture  
+> **版本**：v3.3 OCR Agent Workbench  
 > **开发者**：Dazzle (Software Engineering, 2025 Cohort)  
 > **核心驱动**：Python 3.13 + Streamlit + Ollama (Optional)
 
@@ -14,6 +14,7 @@
 * **⚡️ 极速模式 (Turbo Mode)**：默认开启。基于 Dazzle 自研的高速匹配算法，**无需安装任何 AI 环境**，0 延迟，0 报错。
 * **💾 自动存档 (Auto-Save)**：内置 JSON 持久化引擎，自动保存班级底册，软件关闭数据不丢失。
 * **🧩 Agent 架构 (Agent Architecture)**：将 UI、底册、核查计算、AI 解析拆分为独立模块，后续可继续扩展历史记录、Excel 导入、云端 fallback。
+* **🖼️ 截图 OCR (Mac / Windows)**：Mac 使用 Homebrew Tesseract，Windows 使用官方 Tesseract OCR，上传截图后可直接识别文字并进入核查流程。
 * **🛡️ 双平台支持**：提供 Windows 独立版 (.exe) 与 Mac 适配方案。
 * **🧠 AI 深度解析 (可选)**：针对极度混乱的文本，支持调用本地 Ollama 大模型进行模糊推理。
 
@@ -26,8 +27,12 @@ secretary.py       # Streamlit 主界面，只负责交互与展示
 agent.py           # 考勤秘书 Agent，调度极速匹配或 Ollama AI 解析
 attendance.py      # 核查计算、完成率、未完成名单和提醒话术
 roster.py          # 底册读写、姓名清洗、身份冲突处理
+ocr.py             # Mac / Windows 截图 OCR
+history.py         # 最近核查记录
 class_roster.json  # 班级底册数据
 requirements.txt   # Python 依赖
+requirements-macos.txt   # Mac OCR 依赖
+requirements-windows.txt # Windows OCR 依赖
 ```
 
 ### v3.0 升级重点
@@ -36,6 +41,28 @@ requirements.txt   # Python 依赖
 * **可验证 Agent 输出**：AI 只负责提取候选姓名，最终核查仍由 `attendance.py` 用底册集合计算，避免模型幻觉直接影响结果。
 * **未知姓名提示**：AI 识别到但不在当前核查范围内的姓名会单独展示，便于发现 OCR 错字或底册遗漏。
 * **核心逻辑可测试**：名单清洗、极速匹配、核查计算已从 Streamlit 页面拆出，后续可以直接加单元测试。
+
+### Mac OCR 安装
+
+Mac 版本使用 Tesseract 和中文语言包：
+
+```bash
+brew install tesseract tesseract-lang
+pip install -r requirements-macos.txt
+```
+
+### Windows OCR 安装
+
+Windows 版本使用官方 Tesseract OCR：
+
+1. 安装 Windows 版 Tesseract OCR，并确保 `tesseract.exe` 在 PATH 中。
+2. 安装 Python 依赖：
+
+```bash
+pip install -r requirements-windows.txt
+```
+
+两端建议上传 PNG/JPG 截图。识别后文本会自动填入“智能核查”的输入框。
 
 ---
 
@@ -114,3 +141,17 @@ xattr -cr /Applications/DazzleSecretaryMac
     * 新增“不在当前核查范围内”的识别结果提示。
 * **后续扩展准备**
     * 为 Excel 导入导出、历史记录、多班级底册、云端模型 fallback 留出清晰边界。
+
+
+## 🚀 Dazzle Secretary Pro v3.3 OCR 识图核查升级  2026.5.10
+
+### ✨ 核心新特性 (New Features)
+* **截图识别**
+    * 智能核查页新增截图上传和“识别图片文字”按钮。
+    * Mac 使用 Tesseract + 中文语言包。
+    * Windows 使用官方 Tesseract OCR + `pytesseract`。
+* **核查记录**
+    * 每次核查自动保存摘要。
+    * 支持查看最近核查结果、快速复制提醒话术。
+* **结果导出**
+    * 本次核查结果可导出 CSV，包含已完成、未完成和异常姓名。

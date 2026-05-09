@@ -3,6 +3,8 @@ import pandas as pd
 import ollama
 
 from agent import AttendanceAgent
+from history import clear_history, load_history, save_history_item
+from ocr import extract_text_from_image, ocr_status_message
 from roster import clean_name_lines, load_roster, save_roster, target_names
 
 # ================= 1. 页面配置与样式 =================
@@ -11,24 +13,104 @@ st.set_page_config(
     page_icon="🌈",
     layout="wide"
 )
-# 顶部彩色条装饰
-st.markdown('<div style="height: 5px; background: linear-gradient(90deg, #FF4B4B 0%, #FFB347 50%, #4B79FF 100%);"></div>', unsafe_allow_html=True)
-
-# 动态副标题 (ENFJ 属性的小彩蛋)
-st.markdown(f"""
-    <div style="display: flex; justify-content: space-between; align-items: center; padding: 10px 0;">
-        <span style="color: #666; font-size: 0.9em;">📅 当前日期：{pd.Timestamp.now().strftime('%Y-%m-%d')}</span>
-        <span style="background-color: #ffe8e8; color: #ff4b4b; padding: 2px 10px; border-radius: 15px; font-size: 0.8em; font-weight: bold;">
-            🚀 Designed By Dazzle With MacBook
-        </span>
-    </div>
-""", unsafe_allow_html=True)
-
-# 自定义简单的 CSS 让界面更专业
 st.markdown("""
     <style>
-    .stMetric { background-color: #f0f2f6; padding: 10px; border-radius: 10px; }
-    .stProgress > div > div > div > div { background-color: #FF4B4B; }
+    .block-container { padding-top: 1.6rem; max-width: 1180px; }
+    .dazzle-strip {
+        height: 6px;
+        border-radius: 999px;
+        background: linear-gradient(90deg, #ff4b4b 0%, #ffb347 36%, #2dd4bf 68%, #4b79ff 100%);
+        margin-bottom: 14px;
+    }
+    .app-hero {
+        border: 1px solid #ffd6d6;
+        border-radius: 8px;
+        padding: 20px 24px;
+        background:
+            linear-gradient(135deg, rgba(255, 245, 245, 0.96), rgba(239, 246, 255, 0.98)),
+            #ffffff;
+        box-shadow: 0 10px 30px rgba(255, 75, 75, 0.08);
+        margin-bottom: 18px;
+    }
+    .hero-topline {
+        display: flex;
+        justify-content: space-between;
+        gap: 16px;
+        color: #7a5c5c;
+        font-size: 13px;
+        margin-bottom: 8px;
+    }
+    .hero-title {
+        margin: 0;
+        font-size: 34px;
+        line-height: 1.14;
+        color: #202124;
+        font-weight: 780;
+        letter-spacing: 0;
+    }
+    .hero-subtitle {
+        margin-top: 8px;
+        color: #5f6368;
+        font-size: 15px;
+    }
+    .status-grid {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 12px;
+        margin: 14px 0 20px;
+    }
+    .status-card {
+        border: 1px solid #ffe1e1;
+        border-radius: 8px;
+        padding: 14px 16px;
+        background: #fff;
+        box-shadow: 0 8px 22px rgba(75, 121, 255, 0.06);
+    }
+    .status-label {
+        color: #667085;
+        font-size: 13px;
+        margin-bottom: 4px;
+    }
+    .status-value {
+        color: #ff4b4b;
+        font-size: 28px;
+        font-weight: 760;
+        line-height: 1.1;
+    }
+    .status-note {
+        color: #667085;
+        font-size: 12px;
+        margin-top: 4px;
+    }
+    .tag {
+        display: inline-block;
+        padding: 4px 10px;
+        border-radius: 6px;
+        margin: 3px;
+        font-size: 14px;
+        border: 1px solid transparent;
+    }
+    .tag-missing { background: #fff1f2; color: #be123c; border-color: #fecdd3; }
+    .tag-done { background: #ecfdf3; color: #027a48; border-color: #abefc6; }
+    .tag-unknown { background: #fffaeb; color: #b54708; border-color: #fedf89; }
+    .result-banner {
+        border-radius: 8px;
+        padding: 16px 18px;
+        border: 1px solid #ffd6d6;
+        background: #fff7ed;
+        margin: 16px 0;
+    }
+    .stMetric {
+        background-color: #ffffff;
+        border: 1px solid #e8eaef;
+        padding: 12px;
+        border-radius: 8px;
+    }
+    .stProgress > div > div > div > div { background-color: #ff4b4b; }
+    @media (max-width: 820px) {
+        .status-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+        .hero-title { font-size: 28px; }
+    }
     </style>
     """, unsafe_allow_html=True)
 
@@ -44,10 +126,33 @@ if (
     st.session_state.group_a = saved_data.get("group_a", [])
     st.session_state.group_b = saved_data.get("group_b", [])
 
+if "ocr_text" not in st.session_state:
+    st.session_state.ocr_text = ""
+
+
+def render_tag_list(names, css_class):
+    if not names:
+        return ""
+    return "".join([f'<span class="tag {css_class}">{name}</span>' for name in names])
+
+
+def result_csv(result):
+    rows = ["status,name"]
+    rows.extend([f"done,{name}" for name in result.done])
+    rows.extend([f"missing,{name}" for name in result.missing])
+    rows.extend([f"unknown,{name}" for name in result.unknown])
+    return "\n".join(rows)
+
+
+count_party = len(st.session_state.group_party)
+count_a = len(st.session_state.group_a)
+count_b = len(st.session_state.group_b)
+total_students = count_party + count_a + count_b
+
 
 # ================= 4. 侧边栏：状态监控 =================
 with st.sidebar:
-    st.title("🌈 考勤看板")
+    st.title("Dazzle Secretary")
     try:
         models_info = ollama.list()
         model_list = [m['name'] for m in (models_info['models'] if 'models' in models_info else models_info)]
@@ -63,52 +168,42 @@ with st.sidebar:
 
     st.divider()
 
-    count_party = len(st.session_state.group_party)
-    count_a = len(st.session_state.group_a)
-    count_b = len(st.session_state.group_b)
-    st.subheader("📊 班级基数")
-    st.write(f"党员总数:**{count_party}**人")
-    st.write(f"团员总数:**{count_a}**人")
-    st.write(f"群众总数:**{count_b}**人")
-    st.write(f"全班总计:**{count_party + count_a + count_b}**人")
+    st.subheader("班级底册")
+    st.metric("全班总计", f"{total_students} 人")
+    st.write(f"党员：**{count_party}**")
+    st.write(f"团员：**{count_a}**")
+    st.write(f"群众：**{count_b}**")
 
     st.divider()
-    st.subheader("⌨️ 技术栈说明")
-    st.markdown("""
-    - **核心语言**: Python 3.13
-    - **AI 引擎**: Ollama + Qwen 3.0 (阿里通义千问)
-    - **交互框架**: Streamlit Pro
-    - **硬件优化**: M4 Apple Silicon 加速
-    """)
-
-    st.divider()
-    st.markdown("### 🛠️ 核心功能说明")
-
-    with st.expander("🔍 智能核查 (AI Check)"):
-        st.markdown("""
-        - **大模型解析**：利用 Ollama 引擎（如 Qwen 3.0）自动从乱序文本、截图识字中精准提取人名。
-        - **多范围切换**：支持“仅党员”“仅团员”或“全班”核查，灵活适配不同场景。
-        """)
-
-    with st.expander("🧼 自动化清洗 (Clean)"):
-        st.markdown("""
-        - **底册去重**：录入名单时自动剔除重复项，保持底册唯一性。
-        - **冲突纠正**：若同一人出现在不同组别，系统自动按“党员 > 团员 > 群众”保留身份。
-        - **静默过滤**：核查时自动过滤多次提交的干扰信息。
-        """)
-
-    with st.expander("📊 实时看板 (Dashboard)"):
-        st.markdown("""
-        - **四维指标**：实时计算应到、实到、未到及完成率。
-        - **一键催办**：针对未完成人员，系统自动生成带 @ 符号的群通知话术。
-        """)
+    st.caption("v3.3 Agent Workbench")
+    st.caption(ocr_status_message())
 
 
 # ================= 5. 主界面布局 =================
-st.title("🛡️ 团支部智能核查系统")
+st.markdown('<div class="dazzle-strip"></div>', unsafe_allow_html=True)
+
+st.markdown(f"""
+    <section class="app-hero">
+        <div class="hero-topline">
+            <span>📅 {pd.Timestamp.now().strftime('%Y-%m-%d')} · Dazzle Secretary Pro v3.3</span>
+            <span>🚀 Designed By Dazzle With MacBook</span>
+        </div>
+        <h1 class="hero-title">🛡️ 团支部智能核查系统</h1>
+        <div class="hero-subtitle">彩色看板 + Agent 核查 + 截图 OCR。粘贴文字或上传截图，一次性生成未完成名单和群通知话术。</div>
+    </section>
+""", unsafe_allow_html=True)
+
+st.markdown(f"""
+    <div class="status-grid">
+        <div class="status-card"><div class="status-label">🟡 党员</div><div class="status-value">{count_party}</div><div class="status-note">优先身份</div></div>
+        <div class="status-card"><div class="status-label">🔴 团员</div><div class="status-value">{count_a}</div><div class="status-note">专项核查</div></div>
+        <div class="status-card"><div class="status-label">🔵 群众</div><div class="status-value">{count_b}</div><div class="status-note">全班核查</div></div>
+        <div class="status-card"><div class="status-label">🌈 底册总数</div><div class="status-value">{total_students}</div><div class="status-note">自动去重</div></div>
+    </div>
+""", unsafe_allow_html=True)
 
 
-tab_check, tab_config = st.tabs(["🚀 智能核查", "⚙️ 底册管理"])
+tab_check, tab_config, tab_history = st.tabs(["🚀 智能核查", "⚙️ 底册管理", "📚 核查记录"])
 
 # --- Tab 1: 智能核查逻辑 ---
 with tab_check:
@@ -128,8 +223,37 @@ with tab_check:
             "group_b": st.session_state.group_b,
         }
         target_list = target_names(current_roster, mode)
+        st.caption(f"当前范围应核查 {len(target_list)} 人；解析引擎：{'极速匹配' if use_turbo else selected_model}")
 
-        raw_text = st.text_area("📥 粘贴完成情况（乱序文本/截图识字）：", height=180, placeholder="例如：1.张三 2.李四 已完成...")
+        st.markdown("#### 🖼️ 截图识别")
+        image_file = st.file_uploader(
+            "上传群接龙截图、名单图片或 OCR 截图（Mac/Windows 专用 OCR）",
+            type=["png", "jpg", "jpeg", "heic", "webp"],
+            label_visibility="collapsed",
+        )
+        ocr_col1, ocr_col2 = st.columns([1, 3])
+        with ocr_col1:
+            run_ocr = st.button("识别图片文字", disabled=image_file is None)
+        with ocr_col2:
+            st.caption(ocr_status_message())
+
+        if run_ocr and image_file is not None:
+            try:
+                with st.spinner("正在识别图片文字..."):
+                    st.session_state.ocr_text = extract_text_from_image(
+                        image_file.getvalue(),
+                        filename=image_file.name,
+                    )
+                st.success("图片文字已识别，可继续核查。")
+            except Exception as exc:
+                st.error(str(exc))
+
+        raw_text = st.text_area(
+            "📥 粘贴或识别完成情况文本：",
+            value=st.session_state.ocr_text,
+            height=180,
+            placeholder="例如：1.张三 2.李四 已完成...",
+        )
 
         btn_label = "⚡ 立即秒杀 (0延迟)" if use_turbo else "🔍 启动 AI 深度解析"
 
@@ -141,6 +265,7 @@ with tab_check:
                 spinner_text = "⚡ 正在执行极速检索..." if use_turbo else f"正在驱动 {selected_model} 深度提取 (速度较慢)..."
                 with st.spinner(spinner_text):
                     result = agent.check(raw_text, target_list, use_ai=not use_turbo)
+                saved_history = save_history_item(mode, result)
 
                 st.divider()
                 m1, m2, m3, m4 = st.columns(4)
@@ -154,6 +279,12 @@ with tab_check:
                 m3.metric("待冲锋", f"{miss_n}人", delta=f"{miss_n}", delta_color="off")
                 m4.metric("完成率", f"{percent:.1f}%")
                 st.progress(percent / 100)
+                st.markdown(f"""
+                    <div class="result-banner">
+                        <strong>{mode}</strong> · {result.source} · 完成率 {percent:.1f}% ·
+                        已完成 {done_n} 人，未完成 {miss_n} 人
+                    </div>
+                """, unsafe_allow_html=True)
 
                 st.markdown("### 📋 核查详情")
                 with st.container(border=True):
@@ -162,11 +293,7 @@ with tab_check:
                     with res_col1:
                         st.markdown(f"#### <span style='color: #ff4b4b;'>🚩 未完成名单 ({miss_n})</span>", unsafe_allow_html=True)
                         if result.missing:
-                            missing_html = "".join([
-                                f'<div style="display:inline-block; background-color:#fff5f5; color:#ff4b4b; border:1px solid #ffcccc; padding:4px 10px; border-radius:5px; margin:3px; font-size:14px;">{name}</div>'
-                                for name in result.missing
-                            ])
-                            st.markdown(missing_html, unsafe_allow_html=True)
+                            st.markdown(render_tag_list(result.missing, "tag-missing"), unsafe_allow_html=True)
 
                             st.divider()
                             st.markdown("**📢 快速群通知：**")
@@ -177,19 +304,21 @@ with tab_check:
                     with res_col2:
                         st.markdown(f"#### <span style='color: #28a745;'>✅ 已完成名单 ({done_n})</span>", unsafe_allow_html=True)
                         if result.done:
-                            done_tags = " ".join([
-                                f'<span style="background-color:#e1f5fe; color:#01579b; padding:2px 8px; border-radius:10px; margin:2px; display:inline-block;">{n}</span>'
-                                for n in result.done
-                            ])
-                            st.markdown(done_tags, unsafe_allow_html=True)
+                            st.markdown(render_tag_list(result.done, "tag-done"), unsafe_allow_html=True)
                         else:
                             st.info("暂无匹配数据")
 
                         if result.unknown:
                             st.caption("以下姓名被识别出来，但不在当前核查范围内：")
-                            st.code("、".join(result.unknown), language="text")
+                            st.markdown(render_tag_list(result.unknown, "tag-unknown"), unsafe_allow_html=True)
 
-                st.caption(f"本次解析来源：{result.source}")
+                st.download_button(
+                    "下载本次核查 CSV",
+                    data=result_csv(result),
+                    file_name=f"attendance_{saved_history['time'].replace(':', '-')}.csv",
+                    mime="text/csv",
+                )
+                st.caption(f"本次解析来源：{result.source}，已写入核查记录。")
 
 
 # --- Tab 2: 底册管理逻辑（含自动去重与跨组清洗） ---
@@ -221,6 +350,35 @@ with tab_config:
 
         st.success("✅ 数据已自动清洗并同步至看板！")
         st.rerun()
+
+
+with tab_history:
+    history_items = load_history()
+    c_history_title, c_history_action = st.columns([3, 1])
+    with c_history_title:
+        st.subheader("最近核查记录")
+    with c_history_action:
+        if history_items and st.button("清空记录"):
+            clear_history()
+            st.rerun()
+
+    if not history_items:
+        st.info("还没有核查记录。完成一次核查后，这里会自动保存摘要。")
+    else:
+        for item in history_items[:10]:
+            with st.container(border=True):
+                top_l, top_r = st.columns([3, 1])
+                with top_l:
+                    st.markdown(f"**{item['time']} · {item['mode']}**")
+                    st.caption(f"{item['source']} · 完成率 {item['percent']}%")
+                with top_r:
+                    st.metric("未完成", f"{item['missing_count']} 人")
+
+                if item["missing"]:
+                    st.markdown(render_tag_list(item["missing"], "tag-missing"), unsafe_allow_html=True)
+                    st.code(item["reminder"], language="text")
+                else:
+                    st.success("本次全员完成")
 
 
 # ================= 6. 页脚 =================
