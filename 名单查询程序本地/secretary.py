@@ -130,18 +130,28 @@ st.markdown("""
     """, unsafe_allow_html=True)
 
 
+CLASS_ROSTER_FILE = "class_roster.json"
+GRADE_ROSTER_FILE = "grade_roster.json"
+
+
 # ================= 3. 数据持久化初始化 (修改版) =================
-if "roster_book" not in st.session_state:
-    st.session_state.roster_book = load_roster_book()
+if "class_roster" not in st.session_state:
+    class_book = load_roster_book(CLASS_ROSTER_FILE)
+    st.session_state.class_roster = class_book["classes"].get("本班")
+    if st.session_state.class_roster is None:
+        st.session_state.class_roster = class_book["classes"][class_book["active_class"]]
+
+if "grade_roster_book" not in st.session_state:
+    st.session_state.grade_roster_book = load_roster_book(GRADE_ROSTER_FILE)
 
 if "secretary_role" not in st.session_state:
     st.session_state.secretary_role = "班团支书"
 
-if "selected_class" not in st.session_state:
-    st.session_state.selected_class = st.session_state.roster_book["active_class"]
+if "selected_grade_class" not in st.session_state:
+    st.session_state.selected_grade_class = st.session_state.grade_roster_book["active_class"]
 
-if "pending_selected_class" in st.session_state:
-    st.session_state.selected_class = st.session_state.pop("pending_selected_class")
+if "pending_selected_grade_class" in st.session_state:
+    st.session_state.selected_grade_class = st.session_state.pop("pending_selected_grade_class")
 
 if "grade_scope" not in st.session_state:
     st.session_state.grade_scope = "全年级"
@@ -167,16 +177,16 @@ def result_csv(result):
 
 def current_scope_roster():
     if st.session_state.secretary_role != "年团支书":
-        return get_class_roster(st.session_state.roster_book, st.session_state.selected_class)
+        return st.session_state.class_roster
     if st.session_state.grade_scope == "全年级":
-        return merge_class_rosters(st.session_state.roster_book)
-    return get_class_roster(st.session_state.roster_book, st.session_state.grade_scope)
+        return merge_class_rosters(st.session_state.grade_roster_book)
+    return get_class_roster(st.session_state.grade_roster_book, st.session_state.grade_scope)
 
 
 def scope_label():
     if st.session_state.secretary_role == "年团支书":
         return st.session_state.grade_scope
-    return st.session_state.selected_class
+    return "本班"
 
 
 def roster_counts(roster):
@@ -186,15 +196,15 @@ def roster_counts(roster):
     return party, members, others, party + members + others
 
 
-class_options = list(st.session_state.roster_book["classes"].keys())
-if st.session_state.selected_class not in class_options:
-    st.session_state.selected_class = st.session_state.roster_book["active_class"]
+class_options = list(st.session_state.grade_roster_book["classes"].keys())
+if st.session_state.selected_grade_class not in class_options:
+    st.session_state.selected_grade_class = st.session_state.grade_roster_book["active_class"]
 
 if st.session_state.secretary_role == "年团支书" and st.session_state.grade_scope not in ["全年级", *class_options]:
     st.session_state.grade_scope = "全年级"
 
 scope_roster = current_scope_roster()
-grade_roster = merge_class_rosters(st.session_state.roster_book)
+grade_roster = merge_class_rosters(st.session_state.grade_roster_book)
 display_roster = grade_roster if st.session_state.secretary_role == "年团支书" else scope_roster
 count_party, count_a, count_b, total_students = roster_counts(display_roster)
 scope_party, scope_a, scope_b, scope_total = roster_counts(scope_roster)
@@ -239,7 +249,7 @@ with st.sidebar:
         if st.session_state.grade_scope != "全年级":
             st.caption(f"当前核查分组：{st.session_state.grade_scope}")
         scope_roster = current_scope_roster()
-        grade_roster = merge_class_rosters(st.session_state.roster_book)
+        grade_roster = merge_class_rosters(st.session_state.grade_roster_book)
         count_party, count_a, count_b, total_students = roster_counts(grade_roster)
         scope_party, scope_a, scope_b, scope_total = roster_counts(scope_roster)
 
@@ -377,7 +387,7 @@ with tab_check:
                 if st.session_state.secretary_role == "年团支书":
                     done_set = set(result.done)
                     summary_rows = []
-                    for class_name, class_roster in grade_class_items(st.session_state.roster_book):
+                    for class_name, class_roster in grade_class_items(st.session_state.grade_roster_book):
                         class_targets = target_names(class_roster, mode)
                         class_done = [name for name in class_targets if name in done_set]
                         class_missing = len(class_targets) - len(class_done)
@@ -439,12 +449,12 @@ with tab_config:
         st.info("年团支书维护年级底册；每个分班底册作为年级数据的一部分，用于全年级汇总和横向对比。")
         manage_c0, manage_c1, manage_c2, manage_c3 = st.columns([2, 2, 1, 1])
         with manage_c0:
-            selected_index = class_options.index(st.session_state.selected_class)
+            selected_index = class_options.index(st.session_state.selected_grade_class)
             st.selectbox(
                 "当前维护分组",
                 class_options,
                 index=selected_index,
-                key="selected_class",
+                key="selected_grade_class",
             )
         with manage_c1:
             new_class_name = st.text_input("新增分班底册", placeholder="例如：软件工程 1 班")
@@ -452,23 +462,28 @@ with tab_config:
             st.write("")
             if st.button("添加分组", use_container_width=True):
                 if new_class_name.strip():
-                    st.session_state.roster_book = add_class_roster(new_class_name)
-                    st.session_state.pending_selected_class = st.session_state.roster_book["active_class"]
+                    st.session_state.grade_roster_book = add_class_roster(new_class_name, GRADE_ROSTER_FILE)
+                    st.session_state.pending_selected_grade_class = st.session_state.grade_roster_book["active_class"]
                     st.rerun()
                 else:
                     st.warning("请先输入班级名称。")
         with manage_c3:
             st.write("")
-            can_delete_class = len(st.session_state.roster_book["classes"]) > 1
+            can_delete_class = len(st.session_state.grade_roster_book["classes"]) > 1
             if st.button("删除当前分组", disabled=not can_delete_class, use_container_width=True):
-                st.session_state.roster_book = delete_class_roster(st.session_state.selected_class)
-                st.session_state.pending_selected_class = st.session_state.roster_book["active_class"]
+                st.session_state.grade_roster_book = delete_class_roster(st.session_state.selected_grade_class, GRADE_ROSTER_FILE)
+                st.session_state.pending_selected_grade_class = st.session_state.grade_roster_book["active_class"]
                 st.rerun()
     else:
         st.info("班团支书模式保持单班底册；直接粘贴名单，系统会自动去重并修正身份冲突（党员身份优先，其次团员）。")
 
-    edit_roster = get_class_roster(st.session_state.roster_book, st.session_state.selected_class)
-    st.caption(f"{'当前维护分组' if st.session_state.secretary_role == '年团支书' else '正在编辑'}：{st.session_state.selected_class}")
+    if st.session_state.secretary_role == "年团支书":
+        edit_roster = get_class_roster(st.session_state.grade_roster_book, st.session_state.selected_grade_class)
+        edit_label = st.session_state.selected_grade_class
+    else:
+        edit_roster = st.session_state.class_roster
+        edit_label = "本班"
+    st.caption(f"{'当前维护分组' if st.session_state.secretary_role == '年团支书' else '正在编辑'}：{edit_label}")
     col_party, col_a, col_b = st.columns(3)
     with col_party:
         st.markdown("### 🟡 党员名单")
@@ -476,7 +491,7 @@ with tab_config:
             "每行一个名字",
             value="\n".join(edit_roster["group_party"]),
             height=300,
-            key=f"edit_party_{st.session_state.selected_class}",
+            key=f"edit_party_{st.session_state.secretary_role}_{edit_label}",
         )
     with col_a:
         st.markdown("### 🔴 团员名单")
@@ -484,7 +499,7 @@ with tab_config:
             "每行一个名字",
             value="\n".join(edit_roster["group_a"]),
             height=300,
-            key=f"edit_a_{st.session_state.selected_class}",
+            key=f"edit_a_{st.session_state.secretary_role}_{edit_label}",
         )
     with col_b:
         st.markdown("### 🔵 群众名单")
@@ -492,7 +507,7 @@ with tab_config:
             "每行一个名字",
             value="\n".join(edit_roster["group_b"]),
             height=300,
-            key=f"edit_b_{st.session_state.selected_class}",
+            key=f"edit_b_{st.session_state.secretary_role}_{edit_label}",
         )
 
     if st.button("🚀 保存并自动清洗底册数据"):
@@ -500,8 +515,12 @@ with tab_config:
         clean_a = clean_name_lines(input_a)
         clean_b = clean_name_lines(input_b)
 
-        save_class_roster(st.session_state.selected_class, clean_party, clean_a, clean_b)
-        st.session_state.roster_book = load_roster_book()
+        if st.session_state.secretary_role == "年团支书":
+            save_class_roster(st.session_state.selected_grade_class, clean_party, clean_a, clean_b, GRADE_ROSTER_FILE)
+            st.session_state.grade_roster_book = load_roster_book(GRADE_ROSTER_FILE)
+        else:
+            save_class_roster("本班", clean_party, clean_a, clean_b, CLASS_ROSTER_FILE)
+            st.session_state.class_roster = load_roster_book(CLASS_ROSTER_FILE)["classes"]["本班"]
 
         st.success("✅ 数据已自动清洗并同步至看板！")
         st.rerun()

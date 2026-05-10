@@ -1,7 +1,7 @@
 {
-    "active_class": "本班",
+    "active_class": "软件工程1班",
     "classes": {
-        "本班": {
+        "软件工程7班": {
             "group_party": [],
             "group_a": [
                 "晏宁",
@@ -55,6 +55,13 @@
                 "李佳小敏",
                 "朱芮蝶"
             ]
+        },
+        "软件工程1班": {
+            "group_party": [],
+            "group_a": [
+                "小米"
+            ],
+            "group_b": []
         }
     }
 }
