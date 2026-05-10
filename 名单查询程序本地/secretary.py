@@ -228,13 +228,8 @@ with st.sidebar:
             grade_scope_options,
             key="grade_scope",
         )
-        selected_index = class_options.index(st.session_state.selected_class)
-        st.selectbox(
-            "维护分班底册",
-            class_options,
-            index=selected_index,
-            key="selected_class",
-        )
+        if st.session_state.grade_scope != "全年级":
+            st.caption(f"当前核查分组：{st.session_state.grade_scope}")
         active_roster = current_scope_roster()
         count_party = len(active_roster["group_party"])
         count_a = len(active_roster["group_a"])
@@ -243,7 +238,7 @@ with st.sidebar:
 
     st.subheader("年级底册" if st.session_state.secretary_role == "年团支书" else "班级底册")
     if st.session_state.secretary_role == "年团支书":
-        st.caption(f"核查：{st.session_state.grade_scope}；维护：{st.session_state.selected_class}")
+        st.caption(f"核查：{st.session_state.grade_scope}；底册管理页可切换维护分组")
     st.metric("年级总计" if st.session_state.secretary_role == "年团支书" else "全班总计", f"{total_students} 人")
     st.write(f"党员：**{count_party}**")
     st.write(f"团员：**{count_a}**")
@@ -435,7 +430,15 @@ with tab_config:
     st.subheader("📝 录入/更新年级底册" if st.session_state.secretary_role == "年团支书" else "📝 录入/更新班级底册")
     if st.session_state.secretary_role == "年团支书":
         st.info("年团支书维护年级底册；每个分班底册作为年级数据的一部分，用于全年级汇总和横向对比。")
-        manage_c1, manage_c2, manage_c3 = st.columns([2, 1, 1])
+        manage_c0, manage_c1, manage_c2, manage_c3 = st.columns([2, 2, 1, 1])
+        with manage_c0:
+            selected_index = class_options.index(st.session_state.selected_class)
+            st.selectbox(
+                "当前维护分组",
+                class_options,
+                index=selected_index,
+                key="selected_class",
+            )
         with manage_c1:
             new_class_name = st.text_input("新增分班底册", placeholder="例如：软件工程 1 班")
         with manage_c2:
@@ -458,7 +461,7 @@ with tab_config:
         st.info("班团支书模式保持单班底册；直接粘贴名单，系统会自动去重并修正身份冲突（党员身份优先，其次团员）。")
 
     edit_roster = get_class_roster(st.session_state.roster_book, st.session_state.selected_class)
-    st.caption(f"{'正在维护年级分组' if st.session_state.secretary_role == '年团支书' else '正在编辑'}：{st.session_state.selected_class}")
+    st.caption(f"{'当前维护分组' if st.session_state.secretary_role == '年团支书' else '正在编辑'}：{st.session_state.selected_class}")
     col_party, col_a, col_b = st.columns(3)
     with col_party:
         st.markdown("### 🟡 党员名单")
