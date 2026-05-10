@@ -139,6 +139,9 @@ if "secretary_role" not in st.session_state:
 if "selected_class" not in st.session_state:
     st.session_state.selected_class = st.session_state.roster_book["active_class"]
 
+if "pending_selected_class" in st.session_state:
+    st.session_state.selected_class = st.session_state.pop("pending_selected_class")
+
 if "grade_scope" not in st.session_state:
     st.session_state.grade_scope = "全年级"
 
@@ -440,7 +443,7 @@ with tab_config:
             if st.button("添加分组", use_container_width=True):
                 if new_class_name.strip():
                     st.session_state.roster_book = add_class_roster(new_class_name)
-                    st.session_state.selected_class = st.session_state.roster_book["active_class"]
+                    st.session_state.pending_selected_class = st.session_state.roster_book["active_class"]
                     st.rerun()
                 else:
                     st.warning("请先输入班级名称。")
@@ -449,7 +452,7 @@ with tab_config:
             can_delete_class = len(st.session_state.roster_book["classes"]) > 1
             if st.button("删除当前分组", disabled=not can_delete_class, use_container_width=True):
                 st.session_state.roster_book = delete_class_roster(st.session_state.selected_class)
-                st.session_state.selected_class = st.session_state.roster_book["active_class"]
+                st.session_state.pending_selected_class = st.session_state.roster_book["active_class"]
                 st.rerun()
     else:
         st.info("班团支书模式保持单班底册；直接粘贴名单，系统会自动去重并修正身份冲突（党员身份优先，其次团员）。")
