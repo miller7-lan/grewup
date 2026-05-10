@@ -9,6 +9,7 @@
 - 极速匹配：直接用底册姓名匹配输入文本
 - AI 解析：通过 Ollama 从乱序文本中提取姓名
 - 截图 OCR：优先 PaddleOCR，Tesseract 作为 Mac/Windows 兜底
+- 高精度 OCR：PaddleOCR 进程内缓存，识别时显示阶段进度条
 - OCR 纠错：对疑似 OCR 错字姓名进行底册模糊修正
 - 核查结果：展示应到、实到、未到、完成率和群提醒话术
 
@@ -55,9 +56,10 @@ pip install -r requirements-windows.txt
 
 两端都推荐上传 PNG/JPG 截图。识别后文本会自动进入核查文本框；系统会再用底册做姓名模糊纠错。
 
+高精度 OCR 开关打开后会使用 PaddleOCR。首次识别需要初始化模型，后续同一轮 Streamlit 进程会复用已加载模型，避免每次点击都重新启动 PaddleOCR。界面会显示“准备图片 / 初始化模型 / 正在识别 / 整理结果”的进度条；如果 PaddleOCR 未返回文本，系统再切换到 Tesseract 兜底。
+
 ## 后续可升级方向
 
-- 增加核查历史记录
 - 增加 Excel 导入/导出
 - 增加相似姓名提示，例如 OCR 错字、数字夹杂、人名缺字
 - 增加多班级底册

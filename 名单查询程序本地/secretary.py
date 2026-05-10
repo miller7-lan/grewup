@@ -234,6 +234,11 @@ with tab_check:
             type=["png", "jpg", "jpeg", "heic", "webp"],
             label_visibility="collapsed",
         )
+        prefer_paddle = st.toggle(
+            "高精度 OCR（PaddleOCR，首次较慢）",
+            value=False,
+            help="默认使用快速 OCR，避免页面长时间卡住；截图质量差时再开启。",
+        )
         ocr_col1, ocr_col2 = st.columns([1, 3])
         with ocr_col1:
             run_ocr = st.button("识别图片文字", disabled=image_file is None)
@@ -241,14 +246,25 @@ with tab_check:
             st.caption(ocr_status_message())
 
         if run_ocr and image_file is not None:
+            ocr_progress = st.progress(0, text="准备开始 OCR")
+            last_progress = {"value": 0.0}
+
+            def update_ocr_progress(value, message):
+                safe_value = min(max(float(value), last_progress["value"]), 1.0)
+                last_progress["value"] = safe_value
+                ocr_progress.progress(safe_value, text=message)
+
             try:
-                with st.spinner("正在识别图片文字..."):
-                    st.session_state.ocr_text = extract_text_from_image(
-                        image_file.getvalue(),
-                        filename=image_file.name,
-                    )
+                st.session_state.ocr_text = extract_text_from_image(
+                    image_file.getvalue(),
+                    image_file.name,
+                    prefer_paddle,
+                    progress=update_ocr_progress,
+                )
+                ocr_progress.progress(1.0, text="OCR 完成")
                 st.success("图片文字已识别，可继续核查。")
             except Exception as exc:
+                ocr_progress.empty()
                 st.error(str(exc))
 
         raw_text = st.text_area(

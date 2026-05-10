@@ -1,7 +1,10 @@
 import platform
+import importlib.util
+import os
 from pathlib import Path
 import tempfile
 import shutil
+from functools import lru_cache
 
 from PIL import Image, ImageFilter, ImageOps
 
@@ -51,23 +54,30 @@ def ocr_status_message():
     return f"{ocr_platform_name()} OCR：未就绪。{ocr_setup_hint()}"
 
 
-def extract_text_from_image(image_bytes, filename="uploaded.png"):
+def extract_text_from_image(image_bytes, filename="uploaded.png", prefer_paddle=False, progress=None):
     system = platform.system()
     engines = available_ocr_engines()
 
+    _report(progress, 0.06, "正在准备图片")
     texts = []
-    if "PaddleOCR" in engines:
+    if prefer_paddle and "PaddleOCR" in engines:
         try:
-            texts.append(_extract_with_paddleocr(image_bytes))
-        except Exception:
-            pass
+            paddle_text = _extract_with_paddleocr(image_bytes, progress=progress)
+            if paddle_text:
+                _report(progress, 0.92, "正在整理识别结果")
+                return _merge_texts([paddle_text])
+        except Exception as exc:
+            texts.append(f"")
+            _report(progress, 0.70, f"PaddleOCR 失败，正在切换兜底 OCR：{exc}")
 
     if system == "Darwin":
         if "Mac Tesseract" not in engines:
             if texts:
                 return _merge_texts(texts)
             raise RuntimeError(ocr_status_message())
+        _report(progress, 0.74 if prefer_paddle else 0.24, "正在使用快速 OCR 识别")
         texts.append(_extract_with_tesseract(image_bytes))
+        _report(progress, 0.92, "正在整理识别结果")
         return _merge_texts(texts)
 
     if system == "Windows":
@@ -75,10 +85,20 @@ def extract_text_from_image(image_bytes, filename="uploaded.png"):
             if texts:
                 return _merge_texts(texts)
             raise RuntimeError(ocr_status_message())
+        _report(progress, 0.74 if prefer_paddle else 0.24, "正在使用快速 OCR 识别")
         texts.append(_extract_with_tesseract(image_bytes))
+        _report(progress, 0.92, "正在整理识别结果")
         return _merge_texts(texts)
 
     raise RuntimeError(ocr_status_message())
+
+
+def warm_up_paddleocr(progress=None):
+    if not _has_paddleocr():
+        raise RuntimeError("PaddleOCR 未安装。")
+    _report(progress, 0.20, "正在初始化高精度 OCR 模型")
+    _make_paddle_ocr()
+    _report(progress, 0.95, "高精度 OCR 模型已就绪")
 
 
 def _merge_texts(texts):
@@ -92,12 +112,10 @@ def _merge_texts(texts):
 
 
 def _has_paddleocr():
-    try:
-        __import__("paddleocr")
-        __import__("paddle")
-    except Exception:
-        return False
-    return True
+    return (
+        importlib.util.find_spec("paddleocr") is not None
+        and importlib.util.find_spec("paddle") is not None
+    )
 
 
 def _has_tesseract():
@@ -141,16 +159,18 @@ def _extract_with_tesseract(image_bytes):
         return pytesseract.image_to_string(image, config="--psm 6").strip()
 
 
-def _extract_with_paddleocr(image_bytes):
+def _extract_with_paddleocr(image_bytes, progress=None):
     from io import BytesIO
-    from paddleocr import PaddleOCR
 
-    image = _preprocess_image(Image.open(BytesIO(image_bytes)))
+    _report(progress, 0.18, "正在优化图片")
+    image = _prepare_paddle_image(Image.open(BytesIO(image_bytes)))
     with tempfile.NamedTemporaryFile(suffix=".png", delete=True) as tmp:
         image.save(tmp.name)
         tmp.flush()
 
+        _report(progress, 0.32, "正在初始化高精度 OCR 模型")
         ocr = _make_paddle_ocr()
+        _report(progress, 0.56, "正在识别图片文字")
         try:
             result = ocr.ocr(tmp.name, cls=True)
         except TypeError:
@@ -158,17 +178,38 @@ def _extract_with_paddleocr(image_bytes):
         except AttributeError:
             result = ocr.predict(tmp.name)
 
+    _report(progress, 0.84, "正在解析 OCR 结果")
     lines = _flatten_paddle_result(result)
     return "\n".join(lines).strip()
 
 
+@lru_cache(maxsize=1)
 def _make_paddle_ocr():
+    _prepare_paddle_runtime()
     from paddleocr import PaddleOCR
 
     for kwargs in (
+        {
+            "lang": "ch",
+            "ocr_version": "PP-OCRv4",
+            "text_detection_model_name": "PP-OCRv4_mobile_det",
+            "text_recognition_model_name": "PP-OCRv4_mobile_rec",
+            "use_doc_orientation_classify": False,
+            "use_doc_unwarping": False,
+            "use_textline_orientation": True,
+            "text_det_limit_side_len": 960,
+            "text_rec_score_thresh": 0.30,
+        },
+        {
+            "lang": "ch",
+            "use_doc_orientation_classify": False,
+            "use_doc_unwarping": False,
+            "use_textline_orientation": True,
+            "text_det_limit_side_len": 960,
+        },
+        {"lang": "ch"},
         {"use_angle_cls": True, "lang": "ch", "show_log": False},
         {"use_angle_cls": True, "lang": "ch"},
-        {"lang": "ch"},
     ):
         try:
             return PaddleOCR(**kwargs)
@@ -221,3 +262,32 @@ def _preprocess_image(image):
     gray = ImageOps.autocontrast(gray)
     gray = gray.filter(ImageFilter.SHARPEN)
     return gray
+
+
+def _prepare_paddle_image(image):
+    if image.mode not in ("RGB", "L"):
+        image = image.convert("RGB")
+    image = ImageOps.exif_transpose(image)
+
+    width, height = image.size
+    longest = max(width, height)
+    if longest < 900:
+        scale = min(3, max(2, 1200 // max(longest, 1)))
+        image = image.resize((width * scale, height * scale), Image.Resampling.LANCZOS)
+    return image
+
+
+def _prepare_paddle_runtime():
+    cache_dir = Path(tempfile.gettempdir()) / "dazzle-matplotlib-cache"
+    cache_dir.mkdir(parents=True, exist_ok=True)
+    os.environ.setdefault("MPLCONFIGDIR", str(cache_dir))
+    os.environ.setdefault("FLAGS_logtostderr", "0")
+
+
+def _report(progress, value, message):
+    if progress is None:
+        return
+    try:
+        progress(value, message)
+    except TypeError:
+        progress(value)
