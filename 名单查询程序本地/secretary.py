@@ -5,7 +5,16 @@ import ollama
 from agent import AttendanceAgent
 from history import clear_history, load_history, save_history_item
 from ocr import extract_text_from_image, ocr_status_message
-from roster import clean_name_lines, load_roster, save_roster, target_names
+from roster import (
+    add_class_roster,
+    clean_name_lines,
+    delete_class_roster,
+    get_class_roster,
+    load_roster_book,
+    merge_class_rosters,
+    save_class_roster,
+    target_names,
+)
 
 # ================= 1. 页面配置与样式 =================
 st.set_page_config(
@@ -121,15 +130,17 @@ st.markdown("""
 
 
 # ================= 3. 数据持久化初始化 (修改版) =================
-if (
-    "group_party" not in st.session_state
-    or "group_a" not in st.session_state
-    or "group_b" not in st.session_state
-):
-    saved_data = load_roster()
-    st.session_state.group_party = saved_data.get("group_party", [])
-    st.session_state.group_a = saved_data.get("group_a", [])
-    st.session_state.group_b = saved_data.get("group_b", [])
+if "roster_book" not in st.session_state:
+    st.session_state.roster_book = load_roster_book()
+
+if "secretary_role" not in st.session_state:
+    st.session_state.secretary_role = "班团支书"
+
+if "selected_class" not in st.session_state:
+    st.session_state.selected_class = st.session_state.roster_book["active_class"]
+
+if "grade_scope" not in st.session_state:
+    st.session_state.grade_scope = "全年级"
 
 if "ocr_text" not in st.session_state:
     st.session_state.ocr_text = ""
@@ -150,9 +161,31 @@ def result_csv(result):
     return "\n".join(rows)
 
 
-count_party = len(st.session_state.group_party)
-count_a = len(st.session_state.group_a)
-count_b = len(st.session_state.group_b)
+def current_scope_roster():
+    if st.session_state.secretary_role != "年团支书":
+        return get_class_roster(st.session_state.roster_book, st.session_state.selected_class)
+    if st.session_state.grade_scope == "全年级":
+        return merge_class_rosters(st.session_state.roster_book)
+    return get_class_roster(st.session_state.roster_book, st.session_state.grade_scope)
+
+
+def scope_label():
+    if st.session_state.secretary_role == "年团支书":
+        return st.session_state.grade_scope
+    return st.session_state.selected_class
+
+
+class_options = list(st.session_state.roster_book["classes"].keys())
+if st.session_state.selected_class not in class_options:
+    st.session_state.selected_class = st.session_state.roster_book["active_class"]
+
+if st.session_state.secretary_role == "年团支书" and st.session_state.grade_scope not in ["全年级", *class_options]:
+    st.session_state.grade_scope = "全年级"
+
+active_roster = current_scope_roster()
+count_party = len(active_roster["group_party"])
+count_a = len(active_roster["group_a"])
+count_b = len(active_roster["group_b"])
 total_students = count_party + count_a + count_b
 
 
@@ -174,14 +207,47 @@ with st.sidebar:
 
     st.divider()
 
-    st.subheader("班级底册")
-    st.metric("全班总计", f"{total_students} 人")
+    st.subheader("身份")
+    st.radio(
+        "选择使用场景",
+        ["班团支书", "年团支书"],
+        key="secretary_role",
+        horizontal=True,
+        label_visibility="collapsed",
+    )
+
+    if st.session_state.secretary_role == "年团支书":
+        grade_scope_options = ["全年级"] + class_options
+        if st.session_state.grade_scope not in grade_scope_options:
+            st.session_state.grade_scope = "全年级"
+        st.selectbox(
+            "年级核查范围",
+            grade_scope_options,
+            key="grade_scope",
+        )
+        selected_index = class_options.index(st.session_state.selected_class)
+        st.selectbox(
+            "维护分班底册",
+            class_options,
+            index=selected_index,
+            key="selected_class",
+        )
+        active_roster = current_scope_roster()
+        count_party = len(active_roster["group_party"])
+        count_a = len(active_roster["group_a"])
+        count_b = len(active_roster["group_b"])
+        total_students = count_party + count_a + count_b
+
+    st.subheader("年级底册" if st.session_state.secretary_role == "年团支书" else "班级底册")
+    if st.session_state.secretary_role == "年团支书":
+        st.caption(f"核查：{st.session_state.grade_scope}；维护：{st.session_state.selected_class}")
+    st.metric("年级总计" if st.session_state.secretary_role == "年团支书" else "全班总计", f"{total_students} 人")
     st.write(f"党员：**{count_party}**")
     st.write(f"团员：**{count_a}**")
     st.write(f"群众：**{count_b}**")
 
     st.divider()
-    st.caption("v3.3 Agent Workbench")
+    st.caption("v3.4 Multi-Class Agent Workbench")
     st.caption(ocr_status_message())
 
 
@@ -189,7 +255,7 @@ with st.sidebar:
 st.markdown(f"""
     <section class="app-hero">
         <div class="hero-topline">
-            <span>📅 {pd.Timestamp.now().strftime('%Y-%m-%d')} · Dazzle Secretary Pro v3.3</span>
+            <span>📅 {pd.Timestamp.now().strftime('%Y-%m-%d')} · Dazzle Secretary Pro v3.4</span>
             <span>🚀 Designed By Dazzle With MacBook</span>
         </div>
         <h1 class="hero-title">🛡️ 团支部智能核查系统</h1>
@@ -200,8 +266,8 @@ st.markdown(f"""
     <div class="status-grid">
         <div class="status-card"><div class="status-label">🟡 党员</div><div class="status-value">{count_party}</div><div class="status-note">优先身份</div></div>
         <div class="status-card"><div class="status-label">🔴 团员</div><div class="status-value">{count_a}</div><div class="status-note">专项核查</div></div>
-        <div class="status-card"><div class="status-label">🔵 群众</div><div class="status-value">{count_b}</div><div class="status-note">全班核查</div></div>
-        <div class="status-card"><div class="status-label">🌈 底册总数</div><div class="status-value">{total_students}</div><div class="status-note">自动去重</div></div>
+        <div class="status-card"><div class="status-label">🔵 群众</div><div class="status-value">{count_b}</div><div class="status-note">{'年级核查' if st.session_state.secretary_role == '年团支书' else '全班核查'}</div></div>
+        <div class="status-card"><div class="status-label">🌈 {'年级底册' if st.session_state.secretary_role == '年团支书' else '底册总数'}</div><div class="status-value">{total_students}</div><div class="status-note">自动去重</div></div>
     </div>
 """, unsafe_allow_html=True)
 
@@ -210,8 +276,9 @@ tab_check, tab_config, tab_history = st.tabs(["🚀 智能核查", "⚙️ 底�
 
 # --- Tab 1: 智能核查逻辑 ---
 with tab_check:
-    if not st.session_state.group_party and not st.session_state.group_a and not st.session_state.group_b:
-        st.warning("⚠️ 请先切换到『底册管理』录入班级名单！")
+    current_roster = current_scope_roster()
+    if not current_roster["group_party"] and not current_roster["group_a"] and not current_roster["group_b"]:
+        st.warning("⚠️ 请先切换到『底册管理』录入年级底册！" if st.session_state.secretary_role == "年团支书" else "⚠️ 请先切换到『底册管理』录入班级名单！")
     else:
         c1, c2 = st.columns([3, 2])
         with c1:
@@ -220,13 +287,9 @@ with tab_check:
             st.write("")
             use_turbo = st.toggle("⚡ 极速匹配模式", value=True, help="关闭 AI，直接比对名字，速度极快！适合群接龙或 Excel 复制。")
 
-        current_roster = {
-            "group_party": st.session_state.group_party,
-            "group_a": st.session_state.group_a,
-            "group_b": st.session_state.group_b,
-        }
         target_list = target_names(current_roster, mode)
-        st.caption(f"当前范围应核查 {len(target_list)} 人；解析引擎：{'极速匹配' if use_turbo else selected_model}")
+        class_scope = f"{scope_label()} · " if st.session_state.secretary_role == "年团支书" else ""
+        st.caption(f"{class_scope}当前范围应核查 {len(target_list)} 人；解析引擎：{'极速匹配' if use_turbo else selected_model}")
 
         st.markdown("#### 🖼️ 截图识别")
         image_file = st.file_uploader(
@@ -284,7 +347,8 @@ with tab_check:
                 spinner_text = "⚡ 正在执行极速检索..." if use_turbo else f"正在驱动 {selected_model} 深度提取 (速度较慢)..."
                 with st.spinner(spinner_text):
                     result = agent.check(raw_text, target_list, use_ai=not use_turbo)
-                saved_history = save_history_item(mode, result)
+                history_mode = f"{scope_label()} · {mode}" if st.session_state.secretary_role == "年团支书" else mode
+                saved_history = save_history_item(history_mode, result)
 
                 st.divider()
                 m1, m2, m3, m4 = st.columns(4)
@@ -300,10 +364,28 @@ with tab_check:
                 st.progress(percent / 100)
                 st.markdown(f"""
                     <div class="result-banner">
-                        <strong>{mode}</strong> · {result.source} · 完成率 {percent:.1f}% ·
+                        <strong>{history_mode}</strong> · {result.source} · 完成率 {percent:.1f}% ·
                         已完成 {done_n} 人，未完成 {miss_n} 人
                     </div>
                 """, unsafe_allow_html=True)
+
+                if st.session_state.secretary_role == "年团支书":
+                    done_set = set(result.done)
+                    summary_rows = []
+                    for class_name, class_roster in st.session_state.roster_book["classes"].items():
+                        class_targets = target_names(class_roster, mode)
+                        class_done = [name for name in class_targets if name in done_set]
+                        class_missing = len(class_targets) - len(class_done)
+                        class_total = len(class_targets)
+                        summary_rows.append({
+                            "分班底册": class_name,
+                            "应核查": class_total,
+                            "已完成": len(class_done),
+                            "未完成": class_missing,
+                            "完成率": f"{(len(class_done) / class_total * 100) if class_total else 0:.1f}%",
+                        })
+                    st.markdown("### 📊 年级汇总对比")
+                    st.dataframe(pd.DataFrame(summary_rows), use_container_width=True, hide_index=True)
 
                 st.markdown("### 📋 核查详情")
                 with st.container(border=True):
@@ -347,30 +429,66 @@ with tab_check:
 
 # --- Tab 2: 底册管理逻辑（含自动去重与跨组清洗） ---
 with tab_config:
-    st.subheader("📝 录入/更新班级底册")
-    st.info("直接粘贴名单，系统会自动去重并修正身份冲突（党员身份优先，其次团员）。")
+    st.subheader("📝 录入/更新年级底册" if st.session_state.secretary_role == "年团支书" else "📝 录入/更新班级底册")
+    if st.session_state.secretary_role == "年团支书":
+        st.info("年团支书维护年级底册；每个分班底册作为年级数据的一部分，用于全年级汇总和横向对比。")
+        manage_c1, manage_c2, manage_c3 = st.columns([2, 1, 1])
+        with manage_c1:
+            new_class_name = st.text_input("新增分班底册", placeholder="例如：软件工程 1 班")
+        with manage_c2:
+            st.write("")
+            if st.button("添加分组", use_container_width=True):
+                if new_class_name.strip():
+                    st.session_state.roster_book = add_class_roster(new_class_name)
+                    st.session_state.selected_class = st.session_state.roster_book["active_class"]
+                    st.rerun()
+                else:
+                    st.warning("请先输入班级名称。")
+        with manage_c3:
+            st.write("")
+            can_delete_class = len(st.session_state.roster_book["classes"]) > 1
+            if st.button("删除当前分组", disabled=not can_delete_class, use_container_width=True):
+                st.session_state.roster_book = delete_class_roster(st.session_state.selected_class)
+                st.session_state.selected_class = st.session_state.roster_book["active_class"]
+                st.rerun()
+    else:
+        st.info("班团支书模式保持单班底册；直接粘贴名单，系统会自动去重并修正身份冲突（党员身份优先，其次团员）。")
 
+    edit_roster = get_class_roster(st.session_state.roster_book, st.session_state.selected_class)
+    st.caption(f"{'正在维护年级分组' if st.session_state.secretary_role == '年团支书' else '正在编辑'}：{st.session_state.selected_class}")
     col_party, col_a, col_b = st.columns(3)
     with col_party:
         st.markdown("### 🟡 党员名单")
-        input_party = st.text_area("每行一个名字", value="\n".join(st.session_state.group_party), height=300, key="edit_party")
+        input_party = st.text_area(
+            "每行一个名字",
+            value="\n".join(edit_roster["group_party"]),
+            height=300,
+            key=f"edit_party_{st.session_state.selected_class}",
+        )
     with col_a:
         st.markdown("### 🔴 团员名单")
-        input_a = st.text_area("每行一个名字", value="\n".join(st.session_state.group_a), height=300, key="edit_a")
+        input_a = st.text_area(
+            "每行一个名字",
+            value="\n".join(edit_roster["group_a"]),
+            height=300,
+            key=f"edit_a_{st.session_state.selected_class}",
+        )
     with col_b:
         st.markdown("### 🔵 群众名单")
-        input_b = st.text_area("每行一个名字", value="\n".join(st.session_state.group_b), height=300, key="edit_b")
+        input_b = st.text_area(
+            "每行一个名字",
+            value="\n".join(edit_roster["group_b"]),
+            height=300,
+            key=f"edit_b_{st.session_state.selected_class}",
+        )
 
     if st.button("🚀 保存并自动清洗底册数据"):
         clean_party = clean_name_lines(input_party)
         clean_a = clean_name_lines(input_a)
         clean_b = clean_name_lines(input_b)
 
-        saved = save_roster(clean_party, clean_a, clean_b)
-
-        st.session_state.group_party = saved["group_party"]
-        st.session_state.group_a = saved["group_a"]
-        st.session_state.group_b = saved["group_b"]
+        save_class_roster(st.session_state.selected_class, clean_party, clean_a, clean_b)
+        st.session_state.roster_book = load_roster_book()
 
         st.success("✅ 数据已自动清洗并同步至看板！")
         st.rerun()
