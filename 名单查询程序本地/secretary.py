@@ -208,6 +208,7 @@ grade_roster = merge_class_rosters(st.session_state.grade_roster_book)
 display_roster = grade_roster if st.session_state.secretary_role == "年团支书" else scope_roster
 count_party, count_a, count_b, total_students = roster_counts(display_roster)
 scope_party, scope_a, scope_b, scope_total = roster_counts(scope_roster)
+show_scope_detail = st.session_state.secretary_role == "年团支书" and st.session_state.grade_scope != "全年级"
 
 
 # ================= 4. 侧边栏：状态监控 =================
@@ -252,6 +253,7 @@ with st.sidebar:
         grade_roster = merge_class_rosters(st.session_state.grade_roster_book)
         count_party, count_a, count_b, total_students = roster_counts(grade_roster)
         scope_party, scope_a, scope_b, scope_total = roster_counts(scope_roster)
+        show_scope_detail = st.session_state.grade_scope != "全年级"
 
     st.subheader("年级底册" if st.session_state.secretary_role == "年团支书" else "班级底册")
     if st.session_state.secretary_role == "年团支书":
@@ -260,6 +262,13 @@ with st.sidebar:
     st.write(f"党员：**{count_party}**")
     st.write(f"团员：**{count_a}**")
     st.write(f"群众：**{count_b}**")
+    if show_scope_detail:
+        st.divider()
+        st.subheader("当前分组")
+        st.metric(st.session_state.grade_scope, f"{scope_total} 人")
+        st.write(f"党员：**{scope_party}**")
+        st.write(f"团员：**{scope_a}**")
+        st.write(f"群众：**{scope_b}**")
 
     st.divider()
     st.caption("v3.4 Multi-Class Agent Workbench")
@@ -279,12 +288,22 @@ st.markdown(f"""
 
 st.markdown(f"""
     <div class="status-grid">
-        <div class="status-card"><div class="status-label">🟡 党员</div><div class="status-value">{count_party}</div><div class="status-note">优先身份</div></div>
-        <div class="status-card"><div class="status-label">🔴 团员</div><div class="status-value">{count_a}</div><div class="status-note">专项核查</div></div>
-        <div class="status-card"><div class="status-label">🔵 群众</div><div class="status-value">{count_b}</div><div class="status-note">{'年级核查' if st.session_state.secretary_role == '年团支书' else '全班核查'}</div></div>
-        <div class="status-card"><div class="status-label">🌈 {'年级底册' if st.session_state.secretary_role == '年团支书' else '底册总数'}</div><div class="status-value">{total_students}</div><div class="status-note">自动去重</div></div>
+        <div class="status-card"><div class="status-label">🟡 {'年级党员' if st.session_state.secretary_role == '年团支书' else '党员'}</div><div class="status-value">{count_party}</div><div class="status-note">优先身份</div></div>
+        <div class="status-card"><div class="status-label">🔴 {'年级团员' if st.session_state.secretary_role == '年团支书' else '团员'}</div><div class="status-value">{count_a}</div><div class="status-note">专项核查</div></div>
+        <div class="status-card"><div class="status-label">🔵 {'年级群众' if st.session_state.secretary_role == '年团支书' else '群众'}</div><div class="status-value">{count_b}</div><div class="status-note">{'年级汇总' if st.session_state.secretary_role == '年团支书' else '全班核查'}</div></div>
+        <div class="status-card"><div class="status-label">🌈 {'年级总计' if st.session_state.secretary_role == '年团支书' else '底册总数'}</div><div class="status-value">{total_students}</div><div class="status-note">自动去重</div></div>
     </div>
 """, unsafe_allow_html=True)
+
+if show_scope_detail:
+    st.markdown(f"""
+        <div class="status-grid">
+            <div class="status-card"><div class="status-label">📌 当前分组</div><div class="status-value">{scope_total}</div><div class="status-note">{st.session_state.grade_scope}</div></div>
+            <div class="status-card"><div class="status-label">🟡 分组党员</div><div class="status-value">{scope_party}</div><div class="status-note">当前核查分组</div></div>
+            <div class="status-card"><div class="status-label">🔴 分组团员</div><div class="status-value">{scope_a}</div><div class="status-note">当前核查分组</div></div>
+            <div class="status-card"><div class="status-label">🔵 分组群众</div><div class="status-value">{scope_b}</div><div class="status-note">当前核查分组</div></div>
+        </div>
+    """, unsafe_allow_html=True)
 
 
 tab_check, tab_config, tab_history = st.tabs(["🚀 智能核查", "⚙️ 底册管理", "📚 核查记录"])
