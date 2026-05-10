@@ -18,8 +18,9 @@ class AttendanceAgent:
             extracted = self.extract_names_ai(raw_text)
             return build_attendance_result(target_list, extracted, source=f"AI: {self.model_name}")
 
-        extracted = extract_by_turbo_match(raw_text, target_list)
-        return build_attendance_result(target_list, extracted, source="极速匹配")
+        extracted, corrections = extract_by_turbo_match(raw_text, target_list)
+        source = "极速匹配 + 姓名纠错" if corrections else "极速匹配"
+        return build_attendance_result(target_list, extracted, source=source, corrections=corrections)
 
     def extract_names_ai(self, text):
         prompt = (

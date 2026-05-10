@@ -30,6 +30,7 @@ def save_history_item(mode, result, history_file=HISTORY_FILE):
         "done": result.done,
         "missing": result.missing,
         "unknown": result.unknown,
+        "corrections": result.corrections,
         "reminder": result.reminder,
     }
     history.insert(0, item)

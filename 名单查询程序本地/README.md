@@ -8,7 +8,8 @@
 - 身份优先级清洗：党员 > 团员 > 群众
 - 极速匹配：直接用底册姓名匹配输入文本
 - AI 解析：通过 Ollama 从乱序文本中提取姓名
-- 截图 OCR：Mac 和 Windows 分别使用本机 Tesseract OCR
+- 截图 OCR：优先 PaddleOCR，Tesseract 作为 Mac/Windows 兜底
+- OCR 纠错：对疑似 OCR 错字姓名进行底册模糊修正
 - 核查结果：展示应到、实到、未到、完成率和群提醒话术
 
 ## 升级后的结构
@@ -18,7 +19,7 @@ secretary.py      # Streamlit UI
 roster.py         # 底册读写、姓名清洗、核查范围选择
 attendance.py     # 核查计算、结果结构、提醒文案
 agent.py          # Ollama 考勤秘书 Agent
-ocr.py            # Mac / Windows 截图 OCR
+ocr.py            # PaddleOCR / Tesseract 截图 OCR
 class_roster.json # 班级底册
 ```
 
@@ -34,7 +35,7 @@ streamlit run secretary.py
 
 ### Mac
 
-Mac 版本使用 Homebrew 安装的 Tesseract：
+Mac 推荐使用 PaddleOCR；Tesseract 作为兜底：
 
 ```bash
 brew install tesseract tesseract-lang
@@ -43,7 +44,7 @@ pip install -r requirements-macos.txt
 
 ### Windows
 
-Windows 版本使用官方 Tesseract OCR：
+Windows 推荐使用 PaddleOCR；Tesseract 作为兜底：
 
 1. 安装 Windows 版 Tesseract OCR。
 2. 安装 Python 依赖：
@@ -52,7 +53,7 @@ Windows 版本使用官方 Tesseract OCR：
 pip install -r requirements-windows.txt
 ```
 
-两端都推荐上传 PNG/JPG 截图。识别后文本会自动进入核查文本框。
+两端都推荐上传 PNG/JPG 截图。识别后文本会自动进入核查文本框；系统会再用底册做姓名模糊纠错。
 
 ## 后续可升级方向
 

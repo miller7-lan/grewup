@@ -53,6 +53,11 @@ st.markdown("""
         font-weight: 780;
         letter-spacing: 0;
     }
+    .hero-subtitle {
+        margin-top: 8px;
+        color: #5f6368;
+        font-size: 15px;
+    }
     .status-grid {
         display: grid;
         grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -141,6 +146,7 @@ def result_csv(result):
     rows.extend([f"done,{name}" for name in result.done])
     rows.extend([f"missing,{name}" for name in result.missing])
     rows.extend([f"unknown,{name}" for name in result.unknown])
+    rows.extend([f"correction,{item['raw']}->{item['name']}" for item in result.corrections])
     return "\n".join(rows)
 
 
@@ -309,6 +315,11 @@ with tab_check:
                             st.caption("以下姓名被识别出来，但不在当前核查范围内：")
                             st.markdown(render_tag_list(result.unknown, "tag-unknown"), unsafe_allow_html=True)
 
+                        if result.corrections:
+                            st.caption("OCR 疑似修正：")
+                            for item in result.corrections:
+                                st.code(f"{item['raw']} -> {item['name']}  相似度 {item['score']}", language="text")
+
                 st.download_button(
                     "下载本次核查 CSV",
                     data=result_csv(result),
@@ -376,6 +387,9 @@ with tab_history:
                     st.code(item["reminder"], language="text")
                 else:
                     st.success("本次全员完成")
+                if item.get("corrections"):
+                    st.caption("OCR 疑似修正：")
+                    st.write([f"{c['raw']} -> {c['name']}" for c in item["corrections"]])
 
 
 # ================= 6. 页脚 =================

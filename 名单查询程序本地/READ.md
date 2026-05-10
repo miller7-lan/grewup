@@ -14,7 +14,8 @@
 * **⚡️ 极速模式 (Turbo Mode)**：默认开启。基于 Dazzle 自研的高速匹配算法，**无需安装任何 AI 环境**，0 延迟，0 报错。
 * **💾 自动存档 (Auto-Save)**：内置 JSON 持久化引擎，自动保存班级底册，软件关闭数据不丢失。
 * **🧩 Agent 架构 (Agent Architecture)**：将 UI、底册、核查计算、AI 解析拆分为独立模块，后续可继续扩展历史记录、Excel 导入、云端 fallback。
-* **🖼️ 截图 OCR (Mac / Windows)**：Mac 使用 Homebrew Tesseract，Windows 使用官方 Tesseract OCR，上传截图后可直接识别文字并进入核查流程。
+* **🖼️ 截图 OCR (Mac / Windows)**：优先使用 PaddleOCR，Tesseract 作为兜底；上传截图后可直接识别文字并进入核查流程。
+* **🧽 姓名纠错 (Name Repair)**：OCR 识别出错时，会用底册做模糊修正，例如“李欣燃 -> 李欣然”。
 * **🛡️ 双平台支持**：提供 Windows 独立版 (.exe) 与 Mac 适配方案。
 * **🧠 AI 深度解析 (可选)**：针对极度混乱的文本，支持调用本地 Ollama 大模型进行模糊推理。
 
@@ -27,7 +28,7 @@ secretary.py       # Streamlit 主界面，只负责交互与展示
 agent.py           # 考勤秘书 Agent，调度极速匹配或 Ollama AI 解析
 attendance.py      # 核查计算、完成率、未完成名单和提醒话术
 roster.py          # 底册读写、姓名清洗、身份冲突处理
-ocr.py             # Mac / Windows 截图 OCR
+ocr.py             # PaddleOCR / Tesseract 截图 OCR
 history.py         # 最近核查记录
 class_roster.json  # 班级底册数据
 requirements.txt   # Python 依赖
@@ -44,7 +45,7 @@ requirements-windows.txt # Windows OCR 依赖
 
 ### Mac OCR 安装
 
-Mac 版本使用 Tesseract 和中文语言包：
+Mac 推荐使用 PaddleOCR；Tesseract 和中文语言包作为兜底：
 
 ```bash
 brew install tesseract tesseract-lang
@@ -53,7 +54,7 @@ pip install -r requirements-macos.txt
 
 ### Windows OCR 安装
 
-Windows 版本使用官方 Tesseract OCR：
+Windows 推荐使用 PaddleOCR；官方 Tesseract OCR 作为兜底：
 
 1. 安装 Windows 版 Tesseract OCR，并确保 `tesseract.exe` 在 PATH 中。
 2. 安装 Python 依赖：
@@ -62,7 +63,7 @@ Windows 版本使用官方 Tesseract OCR：
 pip install -r requirements-windows.txt
 ```
 
-两端建议上传 PNG/JPG 截图。识别后文本会自动填入“智能核查”的输入框。
+两端建议上传 PNG/JPG 截图。识别后文本会自动填入“智能核查”的输入框，并经过底册姓名模糊纠错。
 
 ---
 
@@ -148,8 +149,10 @@ xattr -cr /Applications/DazzleSecretaryMac
 ### ✨ 核心新特性 (New Features)
 * **截图识别**
     * 智能核查页新增截图上传和“识别图片文字”按钮。
-    * Mac 使用 Tesseract + 中文语言包。
-    * Windows 使用官方 Tesseract OCR + `pytesseract`。
+    * Mac / Windows 均优先使用 PaddleOCR。
+    * Tesseract OCR + `pytesseract` 作为兜底引擎。
+    * 新增图片预处理：放大、灰度、自动对比度、锐化。
+    * 新增 OCR 姓名模糊纠错。
 * **核查记录**
     * 每次核查自动保存摘要。
     * 支持查看最近核查结果、快速复制提醒话术。
