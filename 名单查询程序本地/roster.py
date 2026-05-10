@@ -173,11 +173,20 @@ def get_class_roster(book, class_name):
 
 def merge_class_rosters(book):
     merged = empty_roster()
-    for roster in book.get("classes", {}).values():
+    for _, roster in grade_class_items(book):
         merged["group_party"].extend(roster.get("group_party", []))
         merged["group_a"].extend(roster.get("group_a", []))
         merged["group_b"].extend(roster.get("group_b", []))
     return clean_roster(merged["group_party"], merged["group_a"], merged["group_b"])
+
+
+def grade_class_items(book):
+    classes = book.get("classes", {})
+    if DEFAULT_CLASS_NAME in classes and len(classes) > 1:
+        names = [name for name in classes if name != DEFAULT_CLASS_NAME]
+    else:
+        names = list(classes)
+    return [(name, classes[name]) for name in names]
 
 
 def normalize_class_name(value):

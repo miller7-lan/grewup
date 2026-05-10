@@ -9,6 +9,7 @@ from roster import (
     add_class_roster,
     clean_name_lines,
     delete_class_roster,
+    grade_class_items,
     get_class_roster,
     load_roster_book,
     merge_class_rosters,
@@ -178,6 +179,13 @@ def scope_label():
     return st.session_state.selected_class
 
 
+def roster_counts(roster):
+    party = len(roster["group_party"])
+    members = len(roster["group_a"])
+    others = len(roster["group_b"])
+    return party, members, others, party + members + others
+
+
 class_options = list(st.session_state.roster_book["classes"].keys())
 if st.session_state.selected_class not in class_options:
     st.session_state.selected_class = st.session_state.roster_book["active_class"]
@@ -185,11 +193,11 @@ if st.session_state.selected_class not in class_options:
 if st.session_state.secretary_role == "年团支书" and st.session_state.grade_scope not in ["全年级", *class_options]:
     st.session_state.grade_scope = "全年级"
 
-active_roster = current_scope_roster()
-count_party = len(active_roster["group_party"])
-count_a = len(active_roster["group_a"])
-count_b = len(active_roster["group_b"])
-total_students = count_party + count_a + count_b
+scope_roster = current_scope_roster()
+grade_roster = merge_class_rosters(st.session_state.roster_book)
+display_roster = grade_roster if st.session_state.secretary_role == "年团支书" else scope_roster
+count_party, count_a, count_b, total_students = roster_counts(display_roster)
+scope_party, scope_a, scope_b, scope_total = roster_counts(scope_roster)
 
 
 # ================= 4. 侧边栏：状态监控 =================
@@ -230,15 +238,14 @@ with st.sidebar:
         )
         if st.session_state.grade_scope != "全年级":
             st.caption(f"当前核查分组：{st.session_state.grade_scope}")
-        active_roster = current_scope_roster()
-        count_party = len(active_roster["group_party"])
-        count_a = len(active_roster["group_a"])
-        count_b = len(active_roster["group_b"])
-        total_students = count_party + count_a + count_b
+        scope_roster = current_scope_roster()
+        grade_roster = merge_class_rosters(st.session_state.roster_book)
+        count_party, count_a, count_b, total_students = roster_counts(grade_roster)
+        scope_party, scope_a, scope_b, scope_total = roster_counts(scope_roster)
 
     st.subheader("年级底册" if st.session_state.secretary_role == "年团支书" else "班级底册")
     if st.session_state.secretary_role == "年团支书":
-        st.caption(f"核查：{st.session_state.grade_scope}；底册管理页可切换维护分组")
+        st.caption(f"全年级汇总；当前核查：{st.session_state.grade_scope}（{scope_total} 人）")
     st.metric("年级总计" if st.session_state.secretary_role == "年团支书" else "全班总计", f"{total_students} 人")
     st.write(f"党员：**{count_party}**")
     st.write(f"团员：**{count_a}**")
@@ -370,7 +377,7 @@ with tab_check:
                 if st.session_state.secretary_role == "年团支书":
                     done_set = set(result.done)
                     summary_rows = []
-                    for class_name, class_roster in st.session_state.roster_book["classes"].items():
+                    for class_name, class_roster in grade_class_items(st.session_state.roster_book):
                         class_targets = target_names(class_roster, mode)
                         class_done = [name for name in class_targets if name in done_set]
                         class_missing = len(class_targets) - len(class_done)
