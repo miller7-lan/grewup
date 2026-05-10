@@ -43,6 +43,22 @@ streamlit run secretary.py
 
 如果要使用 AI 深度解析，请先确认 Ollama 已启动，并且本地有可用模型，例如 `qwen3:8b`。
 
+## macOS 应用打包
+
+本项目提供轻量 macOS 应用打包脚本：
+
+```bash
+./build_macos_app.sh
+```
+
+构建产物位于 `dist-macos/`：
+
+- `Dazzle Secretary.app`：macOS 应用包
+- `Dazzle-Secretary-macOS.zip`：适合放到网站下载的压缩包
+- `Dazzle-Secretary-macOS.dmg`：可选的 macOS 下载镜像
+
+当前应用包采用首启安装依赖的方式：第一次打开会在用户目录 `~/Library/Application Support/Dazzle Secretary` 创建独立 Python 环境并安装依赖，之后再启动会直接复用该环境。由于应用未做 Apple Developer ID 签名和公证，用户首次打开时可能需要在系统设置中允许打开。
+
 ## OCR 截图识别
 
 ### Mac
