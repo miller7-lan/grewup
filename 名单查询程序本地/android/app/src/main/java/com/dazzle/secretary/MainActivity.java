@@ -8,6 +8,7 @@ import android.content.Context;
 import android.content.SharedPreferences;
 import android.graphics.Color;
 import android.graphics.Typeface;
+import android.graphics.drawable.GradientDrawable;
 import android.text.InputType;
 import android.view.Gravity;
 import android.view.View;
@@ -33,7 +34,11 @@ public class MainActivity extends Activity {
     private static final String KEY_CLASS = "class_roster";
     private static final String KEY_GRADE = "grade_roster";
     private static final int RED = Color.rgb(255, 75, 75);
-    private static final int BG = Color.rgb(248, 249, 252);
+    private static final int RED_DARK = Color.rgb(219, 48, 67);
+    private static final int RED_SOFT = Color.rgb(255, 239, 241);
+    private static final int BG = Color.rgb(250, 247, 249);
+    private static final int SURFACE = Color.rgb(255, 255, 255);
+    private static final int LINE = Color.rgb(235, 225, 230);
     private static final int TEXT = Color.rgb(34, 38, 52);
     private static final int MUTED = Color.rgb(112, 118, 132);
 
@@ -68,7 +73,7 @@ public class MainActivity extends Activity {
         ScrollView scroll = new ScrollView(this);
         LinearLayout content = new LinearLayout(this);
         content.setOrientation(LinearLayout.VERTICAL);
-        content.setPadding(dp(16), dp(14), dp(16), dp(12));
+        content.setPadding(dp(16), dp(18), dp(16), dp(14));
         scroll.addView(content);
         root.addView(scroll, new LinearLayout.LayoutParams(-1, 0, 1));
 
@@ -81,13 +86,24 @@ public class MainActivity extends Activity {
     }
 
     private void addHeader(LinearLayout parent) {
-        TextView title = text("Dazzle Secretary", 24, true, TEXT);
-        parent.addView(title);
-        parent.addView(text("本地名单核查 · Android 首版", 13, false, MUTED));
+        LinearLayout hero = new LinearLayout(this);
+        hero.setOrientation(LinearLayout.VERTICAL);
+        hero.setPadding(dp(16), dp(14), dp(16), dp(12));
+        hero.setBackground(rounded(SURFACE, 22, dp(1), LINE));
+        hero.setElevation(dp(2));
+        LinearLayout.LayoutParams heroLp = new LinearLayout.LayoutParams(-1, -2);
+        heroLp.setMargins(0, 0, 0, dp(12));
+        parent.addView(hero, heroLp);
+
+        TextView title = text("Dazzle Secretary", 25, true, TEXT);
+        hero.addView(title);
+        TextView subtitle = text("本地名单核查 · Android 首版", 13, false, MUTED);
+        subtitle.setPadding(0, dp(2), 0, 0);
+        hero.addView(subtitle);
 
         RadioGroup roleGroup = new RadioGroup(this);
         roleGroup.setOrientation(RadioGroup.HORIZONTAL);
-        roleGroup.setPadding(0, dp(10), 0, dp(8));
+        roleGroup.setPadding(0, dp(12), 0, dp(4));
         addRadio(roleGroup, "班团支书", role);
         addRadio(roleGroup, "年团支书", role);
         roleGroup.setOnCheckedChangeListener(new RadioGroup.OnCheckedChangeListener() {
@@ -182,8 +198,8 @@ public class MainActivity extends Activity {
         input.setText(inputText);
         input.setHint("粘贴微信接龙、完成名单或任意包含姓名的文本");
         input.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_FLAG_MULTI_LINE);
-        input.setBackgroundColor(Color.WHITE);
-        input.setPadding(dp(12), dp(12), dp(12), dp(12));
+        input.setBackground(rounded(SURFACE, 18, dp(1), LINE));
+        input.setPadding(dp(14), dp(14), dp(14), dp(14));
         LinearLayout.LayoutParams inputLp = new LinearLayout.LayoutParams(-1, -2);
         inputLp.setMargins(0, dp(10), 0, dp(12));
         parent.addView(input, inputLp);
@@ -444,8 +460,8 @@ public class MainActivity extends Activity {
         edit.setMinLines(5);
         edit.setGravity(Gravity.TOP);
         edit.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_FLAG_MULTI_LINE);
-        edit.setBackgroundColor(Color.WHITE);
-        edit.setPadding(dp(12), dp(12), dp(12), dp(12));
+        edit.setBackground(rounded(SURFACE, 18, dp(1), LINE));
+        edit.setPadding(dp(14), dp(14), dp(14), dp(14));
         LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(-1, -2);
         lp.setMargins(0, dp(10), 0, 0);
         edit.setLayoutParams(lp);
@@ -460,8 +476,8 @@ public class MainActivity extends Activity {
             return box;
         }
         TextView tv = text(join(names, "  "), 15, false, Color.parseColor(fg));
-        tv.setBackgroundColor(Color.parseColor(bg));
-        tv.setPadding(dp(10), dp(10), dp(10), dp(10));
+        tv.setBackground(rounded(Color.parseColor(bg), 16, 0, Color.TRANSPARENT));
+        tv.setPadding(dp(12), dp(10), dp(12), dp(10));
         box.addView(tv);
         return box;
     }
@@ -469,20 +485,27 @@ public class MainActivity extends Activity {
     private void addBottomNav() {
         LinearLayout nav = new LinearLayout(this);
         nav.setOrientation(LinearLayout.HORIZONTAL);
-        nav.setBackgroundColor(Color.WHITE);
+        nav.setBackgroundColor(SURFACE);
+        nav.setPadding(dp(10), dp(8), dp(10), dp(10));
+        nav.setElevation(dp(8));
         String[] tabs = {"核查", "底册", "结果", "记录"};
         for (final String item : tabs) {
             Button b = new Button(this);
             b.setText(item);
-            b.setTextColor(item.equals(tab) ? RED : TEXT);
+            boolean selected = item.equals(tab);
+            b.setTextColor(selected ? RED_DARK : MUTED);
             b.setAllCaps(false);
+            b.setTextSize(14);
+            b.setBackground(rounded(selected ? RED_SOFT : Color.TRANSPARENT, 18, 0, Color.TRANSPARENT));
             b.setOnClickListener(new View.OnClickListener() {
                 public void onClick(View v) {
                     tab = item;
                     render();
                 }
             });
-            nav.addView(b, new LinearLayout.LayoutParams(0, dp(56), 1));
+            LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(0, dp(48), 1);
+            lp.setMargins(dp(3), 0, dp(3), 0);
+            nav.addView(b, lp);
         }
         root.addView(nav);
     }
@@ -496,10 +519,11 @@ public class MainActivity extends Activity {
     private LinearLayout card() {
         LinearLayout card = new LinearLayout(this);
         card.setOrientation(LinearLayout.VERTICAL);
-        card.setBackgroundResource(getResources().getIdentifier("card_bg", "drawable", getPackageName()));
-        card.setPadding(dp(14), dp(12), dp(14), dp(12));
+        card.setBackground(rounded(SURFACE, 20, dp(1), LINE));
+        card.setElevation(dp(2));
+        card.setPadding(dp(16), dp(14), dp(16), dp(14));
         LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(-1, -2);
-        lp.setMargins(0, dp(8), 0, dp(4));
+        lp.setMargins(0, dp(9), 0, dp(5));
         card.setLayoutParams(lp);
         return card;
     }
@@ -510,8 +534,9 @@ public class MainActivity extends Activity {
         b.setTextColor(Color.WHITE);
         b.setTextSize(17);
         b.setAllCaps(false);
-        b.setBackgroundColor(RED);
+        b.setBackground(rounded(RED, 22, 0, Color.TRANSPARENT));
         b.setMinHeight(dp(52));
+        b.setElevation(dp(2));
         return b;
     }
 
@@ -519,7 +544,8 @@ public class MainActivity extends Activity {
         Button b = new Button(this);
         b.setText(text);
         b.setAllCaps(false);
-        b.setTextColor(RED);
+        b.setTextColor(RED_DARK);
+        b.setBackground(rounded(RED_SOFT, 16, dp(1), Color.rgb(255, 214, 220)));
         return b;
     }
 
@@ -537,9 +563,18 @@ public class MainActivity extends Activity {
         RadioButton rb = new RadioButton(this);
         rb.setText(value);
         rb.setTextSize(15);
+        rb.setTextColor(TEXT);
         rb.setId(View.generateViewId());
         rb.setChecked(value.equals(selected));
         group.addView(rb);
+    }
+
+    private GradientDrawable rounded(int color, int radiusDp, int strokeWidth, int strokeColor) {
+        GradientDrawable drawable = new GradientDrawable();
+        drawable.setColor(color);
+        drawable.setCornerRadius(dp(radiusDp));
+        if (strokeWidth > 0) drawable.setStroke(strokeWidth, strokeColor);
+        return drawable;
     }
 
     private String loadPrefOrAsset(String key, String assetName) {
