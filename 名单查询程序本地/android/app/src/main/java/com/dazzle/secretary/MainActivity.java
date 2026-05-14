@@ -99,24 +99,16 @@ public class MainActivity extends Activity {
         subtitle.setPadding(0, dp(2), 0, 0);
         hero.addView(subtitle);
 
-        RadioGroup roleGroup = new RadioGroup(this);
-        roleGroup.setOrientation(RadioGroup.HORIZONTAL);
-        roleGroup.setGravity(Gravity.CENTER);
-        roleGroup.setPadding(0, dp(12), 0, dp(4));
-        addRadio(roleGroup, "班团支书", role);
-        addRadio(roleGroup, "年团支书", role);
-        roleGroup.setOnCheckedChangeListener(new RadioGroup.OnCheckedChangeListener() {
-            public void onCheckedChanged(RadioGroup group, int checkedId) {
-                RadioButton rb = findViewById(checkedId);
-                role = rb.getText().toString();
+        parent.addView(segmentedControl(new String[]{"班团支书", "年团支书"}, role, new SegmentHandler() {
+            public void onSelect(String value) {
+                role = value;
                 lastResult = null;
                 if ("年团支书".equals(role) && !gradeBook.classes.containsKey(editGroup)) {
                     editGroup = gradeBook.activeClass;
                 }
                 render();
             }
-        });
-        parent.addView(roleGroup);
+        }));
 
         if ("年团支书".equals(role)) addScopeChooser(parent);
         addStats(parent);
@@ -133,6 +125,8 @@ public class MainActivity extends Activity {
         ArrayAdapter<String> adapter = new ArrayAdapter<>(this, android.R.layout.simple_spinner_dropdown_item, options);
         spinner.setAdapter(adapter);
         spinner.setSelection(Math.max(0, options.indexOf(gradeScope)));
+        spinner.setBackground(rounded(SURFACE, 16, dp(1), LINE));
+        spinner.setPadding(dp(8), 0, dp(8), 0);
         spinner.setOnItemSelectedListener(new android.widget.AdapterView.OnItemSelectedListener() {
             public void onItemSelected(android.widget.AdapterView<?> parent, View view, int position, long id) {
                 String selected = options.get(position);
@@ -144,7 +138,9 @@ public class MainActivity extends Activity {
             }
             public void onNothingSelected(android.widget.AdapterView<?> parent) {}
         });
-        parent.addView(spinner);
+        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(-1, dp(48));
+        lp.setMargins(0, dp(6), 0, dp(6));
+        parent.addView(spinner, lp);
     }
 
     private void addStats(LinearLayout parent) {
@@ -169,17 +165,17 @@ public class MainActivity extends Activity {
     private LinearLayout rowCards(String[] labels, int[] values) {
         LinearLayout row = new LinearLayout(this);
         row.setOrientation(LinearLayout.HORIZONTAL);
-        row.setPadding(0, dp(8), 0, 0);
+        row.setPadding(0, dp(7), 0, 0);
         for (int i = 0; i < labels.length; i++) {
             LinearLayout card = card();
             card.setGravity(Gravity.CENTER);
             TextView label = text(labels[i], 13, false, MUTED);
             label.setGravity(Gravity.CENTER);
             card.addView(label);
-            TextView value = text(String.valueOf(values[i]), 28, true, RED);
+            TextView value = text(String.valueOf(values[i]), 24, true, RED);
             value.setGravity(Gravity.CENTER);
             card.addView(value);
-            LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(0, -2, 1);
+            LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(0, dp(86), 1);
             lp.setMargins(i == 0 ? 0 : dp(6), 0, i == 0 ? dp(6) : 0, 0);
             row.addView(card, lp);
         }
@@ -192,11 +188,15 @@ public class MainActivity extends Activity {
         Spinner modeSpinner = new Spinner(this);
         modeSpinner.setAdapter(new ArrayAdapter<>(this, android.R.layout.simple_spinner_dropdown_item, modes));
         modeSpinner.setSelection(indexOf(modes, lastMode));
+        modeSpinner.setBackground(rounded(SURFACE, 16, dp(1), LINE));
+        modeSpinner.setPadding(dp(8), 0, dp(8), 0);
         modeSpinner.setOnItemSelectedListener(new android.widget.AdapterView.OnItemSelectedListener() {
             public void onItemSelected(android.widget.AdapterView<?> p, View v, int pos, long id) { lastMode = modes[pos]; }
             public void onNothingSelected(android.widget.AdapterView<?> p) {}
         });
-        parent.addView(modeSpinner);
+        LinearLayout.LayoutParams modeLp = new LinearLayout.LayoutParams(-1, dp(48));
+        modeLp.setMargins(0, 0, 0, dp(8));
+        parent.addView(modeSpinner, modeLp);
 
         final EditText input = new EditText(this);
         input.setMinLines(8);
@@ -207,7 +207,7 @@ public class MainActivity extends Activity {
         input.setBackground(rounded(SURFACE, 18, dp(1), LINE));
         input.setPadding(dp(14), dp(14), dp(14), dp(14));
         LinearLayout.LayoutParams inputLp = new LinearLayout.LayoutParams(-1, -2);
-        inputLp.setMargins(0, dp(10), 0, dp(12));
+        inputLp.setMargins(0, dp(6), 0, dp(12));
         parent.addView(input, inputLp);
 
         Button check = primaryButton("开始核查");
@@ -555,6 +555,31 @@ public class MainActivity extends Activity {
         return card;
     }
 
+    private LinearLayout segmentedControl(String[] options, String selected, final SegmentHandler handler) {
+        LinearLayout box = new LinearLayout(this);
+        box.setOrientation(LinearLayout.HORIZONTAL);
+        box.setPadding(dp(4), dp(4), dp(4), dp(4));
+        box.setBackground(rounded(Color.rgb(244, 238, 242), 22, dp(1), LINE));
+        LinearLayout.LayoutParams boxLp = new LinearLayout.LayoutParams(-1, dp(54));
+        boxLp.setMargins(0, dp(12), 0, dp(10));
+        box.setLayoutParams(boxLp);
+
+        for (final String option : options) {
+            boolean active = option.equals(selected);
+            TextView item = text(option, 15, active, active ? RED_DARK : MUTED);
+            item.setGravity(Gravity.CENTER);
+            item.setBackground(rounded(active ? SURFACE : Color.TRANSPARENT, 18, 0, Color.TRANSPARENT));
+            if (active) item.setElevation(dp(1));
+            item.setOnClickListener(new View.OnClickListener() {
+                public void onClick(View v) {
+                    if (!option.equals(role)) handler.onSelect(option);
+                }
+            });
+            box.addView(item, new LinearLayout.LayoutParams(0, -1, 1));
+        }
+        return box;
+    }
+
     private Button primaryButton(String text) {
         Button b = new Button(this);
         b.setText(text);
@@ -589,22 +614,16 @@ public class MainActivity extends Activity {
         return tv;
     }
 
-    private void addRadio(RadioGroup group, String value, String selected) {
-        RadioButton rb = new RadioButton(this);
-        rb.setText(value);
-        rb.setTextSize(15);
-        rb.setTextColor(TEXT);
-        rb.setId(View.generateViewId());
-        rb.setChecked(value.equals(selected));
-        group.addView(rb);
-    }
-
     private GradientDrawable rounded(int color, int radiusDp, int strokeWidth, int strokeColor) {
         GradientDrawable drawable = new GradientDrawable();
         drawable.setColor(color);
         drawable.setCornerRadius(dp(radiusDp));
         if (strokeWidth > 0) drawable.setStroke(strokeWidth, strokeColor);
         return drawable;
+    }
+
+    interface SegmentHandler {
+        void onSelect(String value);
     }
 
     private String loadPrefOrAsset(String key, String assetName) {
