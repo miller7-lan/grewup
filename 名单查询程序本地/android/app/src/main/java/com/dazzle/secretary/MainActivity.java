@@ -73,6 +73,7 @@ public class MainActivity extends Activity {
         ScrollView scroll = new ScrollView(this);
         LinearLayout content = new LinearLayout(this);
         content.setOrientation(LinearLayout.VERTICAL);
+        content.setGravity(Gravity.CENTER_HORIZONTAL);
         content.setPadding(dp(16), dp(18), dp(16), dp(14));
         scroll.addView(content);
         root.addView(scroll, new LinearLayout.LayoutParams(-1, 0, 1));
@@ -88,6 +89,7 @@ public class MainActivity extends Activity {
     private void addHeader(LinearLayout parent) {
         LinearLayout hero = new LinearLayout(this);
         hero.setOrientation(LinearLayout.VERTICAL);
+        hero.setGravity(Gravity.CENTER_HORIZONTAL);
         hero.setPadding(dp(16), dp(14), dp(16), dp(12));
         hero.setBackground(rounded(SURFACE, 22, dp(1), LINE));
         hero.setElevation(dp(2));
@@ -96,13 +98,16 @@ public class MainActivity extends Activity {
         parent.addView(hero, heroLp);
 
         TextView title = text("Dazzle Secretary", 25, true, TEXT);
+        title.setGravity(Gravity.CENTER);
         hero.addView(title);
         TextView subtitle = text("本地名单核查 · Android 首版", 13, false, MUTED);
         subtitle.setPadding(0, dp(2), 0, 0);
+        subtitle.setGravity(Gravity.CENTER);
         hero.addView(subtitle);
 
         RadioGroup roleGroup = new RadioGroup(this);
         roleGroup.setOrientation(RadioGroup.HORIZONTAL);
+        roleGroup.setGravity(Gravity.CENTER);
         roleGroup.setPadding(0, dp(12), 0, dp(4));
         addRadio(roleGroup, "班团支书", role);
         addRadio(roleGroup, "年团支书", role);
@@ -125,6 +130,7 @@ public class MainActivity extends Activity {
 
     private void addScopeChooser(LinearLayout parent) {
         TextView label = text("年级核查范围", 13, true, MUTED);
+        label.setGravity(Gravity.CENTER);
         parent.addView(label);
         Spinner spinner = new Spinner(this);
         ArrayList<String> options = new ArrayList<>();
@@ -161,6 +167,7 @@ public class MainActivity extends Activity {
             int[] scoped = scopeRoster.counts();
             TextView detail = text("当前分组：" + gradeScope + " · " + scoped[3] + " 人 · 党员 " + scoped[0] + " / 团员 " + scoped[1] + " / 群众 " + scoped[2], 13, false, MUTED);
             detail.setPadding(0, dp(4), 0, dp(8));
+            detail.setGravity(Gravity.CENTER);
             parent.addView(detail);
         }
     }
@@ -171,8 +178,13 @@ public class MainActivity extends Activity {
         row.setPadding(0, dp(8), 0, 0);
         for (int i = 0; i < labels.length; i++) {
             LinearLayout card = card();
-            card.addView(text(labels[i], 13, false, MUTED));
-            card.addView(text(String.valueOf(values[i]), 28, true, RED));
+            card.setGravity(Gravity.CENTER);
+            TextView label = text(labels[i], 13, false, MUTED);
+            label.setGravity(Gravity.CENTER);
+            card.addView(label);
+            TextView value = text(String.valueOf(values[i]), 28, true, RED);
+            value.setGravity(Gravity.CENTER);
+            card.addView(value);
             LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(0, -2, 1);
             lp.setMargins(i == 0 ? 0 : dp(6), 0, i == 0 ? dp(6) : 0, 0);
             row.addView(card, lp);
@@ -234,7 +246,9 @@ public class MainActivity extends Activity {
             addGradeRosterTools(parent);
         }
         final Roster editRoster = "年团支书".equals(role) ? gradeBook.get(editGroup) : classBook.get(classBook.activeClass);
-        parent.addView(text(("年团支书".equals(role) ? "当前维护分组：" + editGroup : "正在维护：本班"), 14, true, TEXT));
+        TextView current = text(("年团支书".equals(role) ? "当前维护分组：" + editGroup : "正在维护：本班"), 14, true, TEXT);
+        current.setGravity(Gravity.CENTER);
+        parent.addView(current);
         final EditText party = rosterBox("党员名单", editRoster.groupParty);
         final EditText member = rosterBox("团员名单", editRoster.groupA);
         final EditText other = rosterBox("群众名单", editRoster.groupB);
@@ -367,8 +381,13 @@ public class MainActivity extends Activity {
 
     private void addResultSummary(LinearLayout parent, CheckResult result) {
         LinearLayout card = card();
-        card.addView(text(result.mode + " · " + result.percentText(), 18, true, TEXT));
-        card.addView(text("应核查 " + result.total + " 人，已完成 " + result.done.size() + " 人，未完成 " + result.missing.size() + " 人", 14, false, MUTED));
+        card.setGravity(Gravity.CENTER);
+        TextView title = text(result.mode + " · " + result.percentText(), 18, true, TEXT);
+        title.setGravity(Gravity.CENTER);
+        card.addView(title);
+        TextView summary = text("应核查 " + result.total + " 人，已完成 " + result.done.size() + " 人，未完成 " + result.missing.size() + " 人", 14, false, MUTED);
+        summary.setGravity(Gravity.CENTER);
+        card.addView(summary);
         parent.addView(card);
     }
 
@@ -381,8 +400,13 @@ public class MainActivity extends Activity {
             for (String target : targets) if (done.contains(target)) complete++;
             int total = targets.size();
             LinearLayout card = card();
-            card.addView(text(name, 16, true, TEXT));
-            card.addView(text("应核查 " + total + " · 已完成 " + complete + " · 未完成 " + (total - complete) + " · 完成率 " + pct(complete, total), 13, false, MUTED));
+            card.setGravity(Gravity.CENTER);
+            TextView groupName = text(name, 16, true, TEXT);
+            groupName.setGravity(Gravity.CENTER);
+            card.addView(groupName);
+            TextView line = text("应核查 " + total + " · 已完成 " + complete + " · 未完成 " + (total - complete) + " · 完成率 " + pct(complete, total), 13, false, MUTED);
+            line.setGravity(Gravity.CENTER);
+            card.addView(line);
             parent.addView(card);
         }
     }
@@ -392,12 +416,21 @@ public class MainActivity extends Activity {
         String raw = prefs.getString("history", "[]");
         try {
             JSONArray arr = new JSONArray(raw);
-            if (arr.length() == 0) parent.addView(text("暂无记录。", 15, false, MUTED));
+            if (arr.length() == 0) {
+                TextView empty = text("暂无记录。", 15, false, MUTED);
+                empty.setGravity(Gravity.CENTER);
+                parent.addView(empty);
+            }
             for (int i = arr.length() - 1; i >= 0; i--) {
                 JSONObject item = arr.getJSONObject(i);
                 LinearLayout card = card();
-                card.addView(text(item.optString("title"), 16, true, TEXT));
-                card.addView(text(item.optString("summary"), 13, false, MUTED));
+                card.setGravity(Gravity.CENTER);
+                TextView title = text(item.optString("title"), 16, true, TEXT);
+                title.setGravity(Gravity.CENTER);
+                card.addView(title);
+                TextView summary = text(item.optString("summary"), 13, false, MUTED);
+                summary.setGravity(Gravity.CENTER);
+                card.addView(summary);
                 parent.addView(card);
             }
         } catch (Exception e) {
@@ -512,6 +545,7 @@ public class MainActivity extends Activity {
 
     private TextView sectionTitle(String value) {
         TextView tv = text(value, 18, true, TEXT);
+        tv.setGravity(Gravity.CENTER);
         tv.setPadding(0, dp(18), 0, dp(8));
         return tv;
     }
@@ -537,6 +571,9 @@ public class MainActivity extends Activity {
         b.setBackground(rounded(RED, 22, 0, Color.TRANSPARENT));
         b.setMinHeight(dp(52));
         b.setElevation(dp(2));
+        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(-1, -2);
+        lp.setMargins(0, dp(4), 0, dp(4));
+        b.setLayoutParams(lp);
         return b;
     }
 
