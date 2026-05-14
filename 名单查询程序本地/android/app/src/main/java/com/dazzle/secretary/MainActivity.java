@@ -73,8 +73,7 @@ public class MainActivity extends Activity {
         ScrollView scroll = new ScrollView(this);
         LinearLayout content = new LinearLayout(this);
         content.setOrientation(LinearLayout.VERTICAL);
-        content.setGravity(Gravity.CENTER_HORIZONTAL);
-        content.setPadding(dp(16), dp(18), dp(16), dp(14));
+        content.setPadding(dp(16), statusBarHeight() + dp(12), dp(16), dp(14));
         scroll.addView(content);
         root.addView(scroll, new LinearLayout.LayoutParams(-1, 0, 1));
 
@@ -89,20 +88,15 @@ public class MainActivity extends Activity {
     private void addHeader(LinearLayout parent) {
         LinearLayout hero = new LinearLayout(this);
         hero.setOrientation(LinearLayout.VERTICAL);
-        hero.setGravity(Gravity.CENTER_HORIZONTAL);
-        hero.setPadding(dp(16), dp(14), dp(16), dp(12));
-        hero.setBackground(rounded(SURFACE, 22, dp(1), LINE));
-        hero.setElevation(dp(2));
+        hero.setPadding(0, 0, 0, dp(8));
         LinearLayout.LayoutParams heroLp = new LinearLayout.LayoutParams(-1, -2);
-        heroLp.setMargins(0, 0, 0, dp(12));
+        heroLp.setMargins(0, 0, 0, dp(6));
         parent.addView(hero, heroLp);
 
-        TextView title = text("Dazzle Secretary", 25, true, TEXT);
-        title.setGravity(Gravity.CENTER);
+        TextView title = text("Dazzle Secretary", 23, true, TEXT);
         hero.addView(title);
         TextView subtitle = text("本地名单核查 · Android 首版", 13, false, MUTED);
         subtitle.setPadding(0, dp(2), 0, 0);
-        subtitle.setGravity(Gravity.CENTER);
         hero.addView(subtitle);
 
         RadioGroup roleGroup = new RadioGroup(this);
@@ -545,7 +539,6 @@ public class MainActivity extends Activity {
 
     private TextView sectionTitle(String value) {
         TextView tv = text(value, 18, true, TEXT);
-        tv.setGravity(Gravity.CENTER);
         tv.setPadding(0, dp(18), 0, dp(8));
         return tv;
     }
@@ -669,6 +662,11 @@ public class MainActivity extends Activity {
 
     private int dp(int value) {
         return (int) (value * getResources().getDisplayMetrics().density + 0.5f);
+    }
+
+    private int statusBarHeight() {
+        int id = getResources().getIdentifier("status_bar_height", "dimen", "android");
+        return id > 0 ? getResources().getDimensionPixelSize(id) : dp(24);
     }
 
     private void toast(String msg) {
