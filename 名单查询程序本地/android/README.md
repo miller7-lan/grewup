@@ -34,4 +34,13 @@ out/DazzleSecretary-debug.apk
 
 ## Android Studio
 
-直接用 Android Studio 打开 `android/` 目录即可查看源码。当前项目也提供 Gradle 配置，但 `build_apk.sh` 不依赖 Gradle 下载，适合先快速出包。
+直接用 Android Studio 打开 `android/` 目录即可查看源码。
+
+如果打开后提示 Gradle/JDK 相关错误：
+
+1. 进入 `Settings / Preferences`。
+2. 找到 `Build, Execution, Deployment > Build Tools > Gradle`。
+3. 将 `Gradle JDK` 设为 Android Studio 自带的 `jbr-21` 或 `Embedded JDK`。
+4. 重新 Sync Project。
+
+项目内已经提供 `gradlew` 和 `gradle.properties`，会优先使用 Android Studio 自带 JBR。当前项目也提供 Gradle 配置，但 `build_apk.sh` 不依赖 Gradle 下载，适合先快速出包。
