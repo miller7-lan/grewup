@@ -449,15 +449,28 @@ public class MainActivity extends Activity {
                 parent.addView(empty);
             }
             for (int i = arr.length() - 1; i >= 0; i--) {
-                JSONObject item = arr.getJSONObject(i);
+                final JSONObject item = arr.getJSONObject(i);
                 LinearLayout card = card();
-                card.setGravity(Gravity.CENTER);
+                card.setGravity(Gravity.CENTER_VERTICAL);
                 TextView title = text(item.optString("title"), 16, true, TEXT);
-                title.setGravity(Gravity.CENTER);
                 card.addView(title);
                 TextView summary = text(item.optString("summary"), 13, false, MUTED);
-                summary.setGravity(Gravity.CENTER);
                 card.addView(summary);
+                TextView hint = text("点击查看详情", 12, false, RED_DARK);
+                hint.setPadding(0, dp(6), 0, 0);
+                card.addView(hint);
+                card.setOnClickListener(new View.OnClickListener() {
+                    public void onClick(View v) {
+                        CheckResult restored = resultFromHistory(item);
+                        if (restored == null) {
+                            toast("这条旧记录没有详情");
+                            return;
+                        }
+                        lastResult = restored;
+                        tab = "结果";
+                        render();
+                    }
+                });
                 parent.addView(card);
             }
         } catch (Exception e) {
@@ -503,6 +516,11 @@ public class MainActivity extends Activity {
             JSONObject item = new JSONObject();
             item.put("title", scopeLabel() + " · " + result.mode);
             item.put("summary", "完成率 " + result.percentText() + " · 未完成 " + result.missing.size() + " 人");
+            item.put("mode", result.mode);
+            item.put("total", result.total);
+            item.put("done", new JSONArray(result.done));
+            item.put("missing", new JSONArray(result.missing));
+            item.put("unknown", new JSONArray(result.unknown));
             arr.put(item);
             while (arr.length() > 20) arr.remove(0);
             prefs.edit().putString("history", arr.toString()).apply();
@@ -511,6 +529,21 @@ public class MainActivity extends Activity {
 
     private String scopeLabel() {
         return "年团支书".equals(role) ? gradeScope : "本班";
+    }
+
+    private CheckResult resultFromHistory(JSONObject item) {
+        try {
+            if (!item.has("done") || !item.has("missing") || !item.has("unknown")) return null;
+            String mode = item.optString("mode", "全班核查");
+            int total = item.optInt("total", 0);
+            ArrayList<String> done = jsonArrayLoose(item.optJSONArray("done"));
+            ArrayList<String> missing = jsonArrayLoose(item.optJSONArray("missing"));
+            ArrayList<String> unknown = jsonArrayLoose(item.optJSONArray("unknown"));
+            if (total <= 0) total = done.size() + missing.size();
+            return new CheckResult(mode, total, done, missing, unknown);
+        } catch (Exception e) {
+            return null;
+        }
     }
 
     private EditText rosterBox(String label, List<String> names) {
@@ -922,6 +955,16 @@ public class MainActivity extends Activity {
         for (int i = 0; i < arr.length(); i++) {
             String name = normalizeName(arr.optString(i));
             if (name.length() >= 2 && !out.contains(name)) out.add(name);
+        }
+        return out;
+    }
+
+    private static ArrayList<String> jsonArrayLoose(JSONArray arr) {
+        ArrayList<String> out = new ArrayList<>();
+        if (arr == null) return out;
+        for (int i = 0; i < arr.length(); i++) {
+            String value = arr.optString(i, "").trim();
+            if (!value.isEmpty() && !out.contains(value)) out.add(value);
         }
         return out;
     }
