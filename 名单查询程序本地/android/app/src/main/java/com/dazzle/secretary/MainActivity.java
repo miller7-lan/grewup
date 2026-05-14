@@ -5,15 +5,23 @@ import android.os.Bundle;
 import android.content.ClipData;
 import android.content.ClipboardManager;
 import android.content.Context;
+import android.content.Intent;
 import android.content.SharedPreferences;
 import android.graphics.Color;
 import android.graphics.Typeface;
 import android.graphics.drawable.GradientDrawable;
+import android.net.Uri;
 import android.text.InputType;
 import android.view.Gravity;
 import android.view.View;
 import android.view.inputmethod.InputMethodManager;
 import android.widget.*;
+
+import com.google.mlkit.vision.common.InputImage;
+import com.google.mlkit.vision.text.Text;
+import com.google.mlkit.vision.text.TextRecognition;
+import com.google.mlkit.vision.text.TextRecognizer;
+import com.google.mlkit.vision.text.chinese.ChineseTextRecognizerOptions;
 
 import org.json.JSONArray;
 import org.json.JSONObject;
@@ -33,6 +41,7 @@ public class MainActivity extends Activity {
     private static final String PREFS = "dazzle_secretary_mobile";
     private static final String KEY_CLASS = "class_roster";
     private static final String KEY_GRADE = "grade_roster";
+    private static final int OCR_IMAGE_REQUEST = 4107;
     private static final int RED = Color.rgb(255, 75, 75);
     private static final int RED_DARK = Color.rgb(219, 48, 67);
     private static final int RED_SOFT = Color.rgb(255, 239, 241);
@@ -183,7 +192,7 @@ public class MainActivity extends Activity {
     }
 
     private void renderCheck(LinearLayout parent) {
-        final String[] modes = {"全班核查", "仅核查团员", "仅核查党员"};
+        final String[] modes = {"全班核查", "仅核查党员", "仅核查团员", "仅核查群众"};
         parent.addView(sectionTitle("立即核查"));
         Spinner modeSpinner = new Spinner(this);
         modeSpinner.setAdapter(new ArrayAdapter<>(this, android.R.layout.simple_spinner_dropdown_item, modes));
@@ -209,6 +218,30 @@ public class MainActivity extends Activity {
         LinearLayout.LayoutParams inputLp = new LinearLayout.LayoutParams(-1, -2);
         inputLp.setMargins(0, dp(6), 0, dp(12));
         parent.addView(input, inputLp);
+
+        LinearLayout tools = new LinearLayout(this);
+        tools.setOrientation(LinearLayout.HORIZONTAL);
+        Button ocr = smallButton("图片 OCR");
+        ocr.setOnClickListener(new View.OnClickListener() {
+            public void onClick(View v) {
+                inputText = input.getText().toString();
+                pickImageForOcr();
+            }
+        });
+        tools.addView(ocr, new LinearLayout.LayoutParams(0, dp(44), 1));
+        Button clear = smallButton("清空文本");
+        clear.setOnClickListener(new View.OnClickListener() {
+            public void onClick(View v) {
+                inputText = "";
+                input.setText("");
+            }
+        });
+        LinearLayout.LayoutParams clearLp = new LinearLayout.LayoutParams(0, dp(44), 1);
+        clearLp.setMargins(dp(8), 0, 0, 0);
+        tools.addView(clear, clearLp);
+        LinearLayout.LayoutParams toolsLp = new LinearLayout.LayoutParams(-1, -2);
+        toolsLp.setMargins(0, 0, 0, dp(10));
+        parent.addView(tools, toolsLp);
 
         Button check = primaryButton("开始核查");
         check.setOnClickListener(new View.OnClickListener() {
@@ -697,6 +730,48 @@ public class MainActivity extends Activity {
         if (imm != null) imm.hideSoftInputFromWindow(view.getWindowToken(), 0);
     }
 
+    private void pickImageForOcr() {
+        Intent intent = new Intent(Intent.ACTION_GET_CONTENT);
+        intent.setType("image/*");
+        intent.addCategory(Intent.CATEGORY_OPENABLE);
+        startActivityForResult(Intent.createChooser(intent, "选择截图或图片"), OCR_IMAGE_REQUEST);
+    }
+
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+        if (requestCode != OCR_IMAGE_REQUEST || resultCode != RESULT_OK || data == null || data.getData() == null) return;
+        runOcr(data.getData());
+    }
+
+    private void runOcr(Uri uri) {
+        toast("正在识别图片文字...");
+        try {
+            InputImage image = InputImage.fromFilePath(this, uri);
+            TextRecognizer recognizer = TextRecognition.getClient(new ChineseTextRecognizerOptions.Builder().build());
+            recognizer.process(image)
+                    .addOnSuccessListener(new com.google.android.gms.tasks.OnSuccessListener<Text>() {
+                        public void onSuccess(Text text) {
+                            String recognized = text.getText().trim();
+                            if (recognized.isEmpty()) {
+                                toast("没有识别到文字");
+                                return;
+                            }
+                            inputText = recognized;
+                            toast("OCR 已填入核查文本");
+                            render();
+                        }
+                    })
+                    .addOnFailureListener(new com.google.android.gms.tasks.OnFailureListener() {
+                        public void onFailure(Exception e) {
+                            toast("OCR 失败：" + e.getMessage());
+                        }
+                    });
+        } catch (Exception e) {
+            toast("无法读取图片：" + e.getMessage());
+        }
+    }
+
     static class Roster {
         ArrayList<String> groupParty = new ArrayList<>();
         ArrayList<String> groupA = new ArrayList<>();
@@ -734,6 +809,7 @@ public class MainActivity extends Activity {
             ArrayList<String> result = new ArrayList<>();
             if ("仅核查党员".equals(mode)) result.addAll(groupParty);
             else if ("仅核查团员".equals(mode)) result.addAll(groupA);
+            else if ("仅核查群众".equals(mode)) result.addAll(groupB);
             else {
                 result.addAll(groupParty);
                 result.addAll(groupA);
