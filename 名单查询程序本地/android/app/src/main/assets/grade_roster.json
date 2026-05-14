@@ -1,0 +1,10 @@
+{
+  "active_class": "默认分组",
+  "classes": {
+    "默认分组": {
+      "group_party": [],
+      "group_a": [],
+      "group_b": []
+    }
+  }
+}

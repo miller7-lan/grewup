@@ -1,0 +1,10 @@
+{
+  "active_class": "本班",
+  "classes": {
+    "本班": {
+      "group_party": [],
+      "group_a": [],
+      "group_b": []
+    }
+  }
+}
