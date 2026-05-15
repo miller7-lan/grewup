@@ -36,6 +36,16 @@ app/build/outputs/apk/debug/app-debug.apk
 
 `build_apk.sh` 是早期无依赖版本的快速打包脚本；加入 ML Kit OCR 后，以 Gradle 输出为准。
 
+## 发给华为 / 鸿蒙用户
+
+这个版本是 Android APK。
+
+- 普通 Android 手机可以安装。
+- 华为 EMUI、HarmonyOS 4.x 以及仍兼容 Android APK 的鸿蒙版本通常可以安装。
+- HarmonyOS NEXT / 原生鸿蒙 / 纯血鸿蒙不直接支持 APK，需要后续单独做鸿蒙原生应用包。
+
+华为手机安装 APK 时，用户可以在文件管理中打开安装包。如果提示禁止安装未知应用，需要按系统提示允许当前文件管理器或浏览器安装未知应用后重试。
+
 ## Android Studio
 
 直接用 Android Studio 打开 `android/` 目录即可查看源码。
